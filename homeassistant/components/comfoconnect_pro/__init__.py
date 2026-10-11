@@ -35,8 +35,7 @@ async def async_setup_entry(
             hass, entry, create_modbus_params(entry.data), entry.data[CONF_UNIT_ID]
         )
     except HomeAssistantError as err:
-        # Another entry holds the same port or host with other link settings,
-        # which one shared connection cannot honour.
+        # Another entry holds the same port or host with other link settings
         raise ConfigEntryError(
             translation_domain=DOMAIN,
             translation_key="link_settings_in_use",
