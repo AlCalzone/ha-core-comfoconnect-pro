@@ -3,7 +3,7 @@
 from datetime import timedelta
 from unittest.mock import MagicMock
 
-from comfoconnect_pro_modbus import address
+from comfoconnect_pro_modbus.model import address
 from freezegun.api import FrozenDateTimeFactory
 from modbus_connection import (
     IllegalDataAddressError,

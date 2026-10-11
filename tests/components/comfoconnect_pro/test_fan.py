@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from comfoconnect_pro_modbus import address
+from comfoconnect_pro_modbus.model import address
 from freezegun.api import FrozenDateTimeFactory
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest

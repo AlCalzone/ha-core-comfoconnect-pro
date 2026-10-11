@@ -1,6 +1,6 @@
 """Tests for the Zehnder ComfoConnect PRO select platform."""
 
-from comfoconnect_pro_modbus import address
+from comfoconnect_pro_modbus.model import address
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest
 from syrupy.assertion import SnapshotAssertion
