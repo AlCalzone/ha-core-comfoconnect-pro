@@ -1,10 +1,11 @@
 """Support for Zehnder ComfoConnect PRO selects."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import override
 
-from comfoconnect_pro_modbus import TemperatureProfile, TemperatureProfileMode
+from comfoconnect_pro_modbus import Controls, TemperatureProfile, TemperatureProfileMode
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
@@ -29,7 +30,8 @@ class ComfoConnectProSelectDescription(
     """Describe a ComfoConnect PRO select, backed by a register of ``Controls``."""
 
     component: str = "controls"
-    options_enum: type[IntEnum]
+    value_fn: Callable[[Controls], IntEnum | None]
+    write_fn: Callable[[Controls, str], Awaitable[None]]
 
 
 SELECT_DESCRIPTIONS: tuple[ComfoConnectProSelectDescription, ...] = (
@@ -38,14 +40,20 @@ SELECT_DESCRIPTIONS: tuple[ComfoConnectProSelectDescription, ...] = (
         translation_key="temperature_profile",
         entity_category=EntityCategory.CONFIG,
         options=_enum_options(TemperatureProfile),
-        options_enum=TemperatureProfile,
+        value_fn=lambda controls: controls.temperature_profile,
+        write_fn=lambda controls, option: controls.async_write_temperature_profile(
+            TemperatureProfile[option.upper()]
+        ),
     ),
     ComfoConnectProSelectDescription(
         key="temperature_profile_mode",
         translation_key="temperature_profile_mode",
         entity_category=EntityCategory.CONFIG,
         options=_enum_options(TemperatureProfileMode),
-        options_enum=TemperatureProfileMode,
+        value_fn=lambda controls: controls.temperature_profile_mode,
+        write_fn=lambda controls, option: controls.async_write_temperature_profile_mode(
+            TemperatureProfileMode[option.upper()]
+        ),
     ),
 )
 
@@ -72,15 +80,12 @@ class ComfoConnectProSelect(ComfoConnectProEntity, SelectEntity):
     @override
     def current_option(self) -> str | None:
         """Return the selected option."""
-        value: IntEnum | None = getattr(
-            self.coordinator.device.controls, self.entity_description.key
-        )
+        value = self.entity_description.value_fn(self.coordinator.device.controls)
         return value.name.lower() if value is not None else None
 
     @override
     async def async_select_option(self, option: str) -> None:
         """Write the selected option to the gateway."""
-        value = self.entity_description.options_enum[option.upper()]
         await self._async_write(
-            self.coordinator.device.controls.write(self.entity_description.key, value)
+            self.entity_description.write_fn(self.coordinator.device.controls, option)
         )

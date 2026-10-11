@@ -91,11 +91,11 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
         preset = percentage_to_ordered_list_item(SPEEDS, percentage)
         await self._async_write(controls.async_write_ventilation_preset(preset))
         if controls.auto_mode:
-            await self._async_write(controls.write("auto_mode", False))
+            await self._async_write(controls.async_write_auto_mode(False))
 
     @override
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Hand the speed to the unit's auto mode."""
         await self._async_write(
-            self.coordinator.device.controls.write("auto_mode", True)
+            self.coordinator.device.controls.async_write_auto_mode(True)
         )

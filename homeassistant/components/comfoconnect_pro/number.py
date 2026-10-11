@@ -4,7 +4,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import override
 
-from comfoconnect_pro_modbus import ComfoConnectPro
+from comfoconnect_pro_modbus import (
+    BOOST_TIME_MAX,
+    EXTERNAL_SETPOINT_MAX,
+    EXTERNAL_SETPOINT_MIN,
+    ComfoConnectPro,
+)
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -42,13 +47,13 @@ NUMBER_DESCRIPTIONS: tuple[ComfoConnectProNumberDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         device_class=NumberDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        native_min_value=0,
-        native_max_value=40,
+        native_min_value=EXTERNAL_SETPOINT_MIN,
+        native_max_value=EXTERNAL_SETPOINT_MAX,
         native_step=0.1,
         mode=NumberMode.BOX,
         value_fn=lambda device: device.controls.external_setpoint,
-        write_fn=lambda device, value: device.controls.write(
-            "external_setpoint", value
+        write_fn=lambda device, value: device.controls.async_write_external_setpoint(
+            value
         ),
     ),
     ComfoConnectProNumberDescription(
@@ -58,7 +63,7 @@ NUMBER_DESCRIPTIONS: tuple[ComfoConnectProNumberDescription, ...] = (
         device_class=NumberDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
         native_min_value=0,
-        native_max_value=86400,
+        native_max_value=BOOST_TIME_MAX,
         native_step=1,
         mode=NumberMode.BOX,
         value_fn=lambda device: device.controls.boost_time,

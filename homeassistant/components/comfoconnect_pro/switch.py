@@ -1,7 +1,10 @@
 """Support for Zehnder ComfoConnect PRO switches."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, override
+
+from comfoconnect_pro_modbus import Controls
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant
@@ -20,12 +23,29 @@ class ComfoConnectProSwitchDescription(
     """Describe a ComfoConnect PRO switch, backed by a coil of ``Controls``."""
 
     component: str = "controls"
+    value_fn: Callable[[Controls], bool | None]
+    write_fn: Callable[[Controls, bool], Awaitable[None]]
 
 
 SWITCH_DESCRIPTIONS: tuple[ComfoConnectProSwitchDescription, ...] = (
-    ComfoConnectProSwitchDescription(key="boost", translation_key="boost"),
-    ComfoConnectProSwitchDescription(key="away", translation_key="away"),
-    ComfoConnectProSwitchDescription(key="comfocool", translation_key="comfocool"),
+    ComfoConnectProSwitchDescription(
+        key="boost",
+        translation_key="boost",
+        value_fn=lambda controls: controls.boost,
+        write_fn=lambda controls, on: controls.async_write_boost(on),
+    ),
+    ComfoConnectProSwitchDescription(
+        key="away",
+        translation_key="away",
+        value_fn=lambda controls: controls.away_function,
+        write_fn=lambda controls, on: controls.async_write_away_function(on),
+    ),
+    ComfoConnectProSwitchDescription(
+        key="comfocool",
+        translation_key="comfocool",
+        value_fn=lambda controls: controls.comfocool,
+        write_fn=lambda controls, on: controls.async_write_comfocool(on),
+    ),
 )
 
 
@@ -51,21 +71,18 @@ class ComfoConnectProSwitch(ComfoConnectProEntity, SwitchEntity):
     @override
     def is_on(self) -> bool | None:
         """Return the state of the switch."""
-        value: bool | None = getattr(
-            self.coordinator.device.controls, self.entity_description.key
-        )
-        return value
+        return self.entity_description.value_fn(self.coordinator.device.controls)
 
     @override
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         await self._async_write(
-            self.coordinator.device.controls.write(self.entity_description.key, True)
+            self.entity_description.write_fn(self.coordinator.device.controls, True)
         )
 
     @override
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         await self._async_write(
-            self.coordinator.device.controls.write(self.entity_description.key, False)
+            self.entity_description.write_fn(self.coordinator.device.controls, False)
         )
