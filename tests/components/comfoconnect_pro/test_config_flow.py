@@ -182,7 +182,7 @@ async def test_user_step_cannot_connect(
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
-@pytest.mark.parametrize(("code", "state"), [(50, "50"), (7, "unknown")])
+@pytest.mark.parametrize(("code", "state"), [(50, "50"), (7, "7")])
 async def test_user_step_no_ventilation_unit(
     hass: HomeAssistant, mock_setup_entry: AsyncMock, code: int, state: str
 ) -> None:

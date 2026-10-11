@@ -226,7 +226,7 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
         try:
             await _async_probe(self.hass, data)
         except NoVentilationUnitError as err:
-            state = "unknown" if err.state is None else str(err.state.value)
+            state = "unknown" if err.code is None else str(err.code)
             return {"base": "no_ventilation_unit"}, {"state": state}
         except (ModbusError, HomeAssistantError) as err:
             return {"base": "cannot_connect"}, {"error": str(err)}
