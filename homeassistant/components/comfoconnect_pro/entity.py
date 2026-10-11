@@ -4,9 +4,10 @@ from collections.abc import Awaitable
 from dataclasses import dataclass
 from typing import override
 
+from comfoconnect_pro_modbus import InvalidValueError
 from modbus_connection import ModbusError
 
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -53,6 +54,12 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
         """Send a write to the gateway, then refresh."""
         try:
             await write
+        except InvalidValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_value",
+                translation_placeholders={"error": str(err)},
+            ) from err
         except ModbusError as err:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,

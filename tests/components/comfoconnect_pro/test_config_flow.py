@@ -17,13 +17,14 @@ from homeassistant.components.comfoconnect_pro.config_flow import (
 from homeassistant.components.comfoconnect_pro.const import (
     CONF_BAUDRATE,
     CONF_PARITY,
+    CONF_UNIT_ID,
     DEFAULT_NAME,
     DOMAIN,
     TYPE_SERIAL,
     TYPE_TCP,
 )
 from homeassistant.config_entries import ConfigEntryState, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError
@@ -234,16 +235,51 @@ async def test_user_step_already_configured(
     assert result["reason"] == "already_configured"
 
 
-async def test_user_step_other_unit_id_is_new(
+@pytest.mark.parametrize(
+    "user_input",
+    [
+        pytest.param({**MOCK_TCP_INPUT, CONF_UNIT_ID: 2}, id="other_unit_id"),
+        pytest.param({**MOCK_TCP_INPUT, CONF_HOST: " 192.168.1.100 "}, id="spaces"),
+    ],
+)
+async def test_user_step_same_tcp_gateway_is_a_duplicate(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock, user_input: dict[str, Any]
+) -> None:
+    """Test the unit ID and the host's spelling don't make a new TCP gateway."""
+    MockConfigEntry(domain=DOMAIN, data=MOCK_ENTRY_DATA).add_to_hass(hass)
+    flow_id = await _start_flow(hass, TYPE_TCP)
+
+    result = await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_user_step_normalizes_the_host(
     hass: HomeAssistant, mock_setup_entry: AsyncMock
 ) -> None:
-    """Test a second gateway behind the same host on another unit ID is accepted."""
-    MockConfigEntry(domain=DOMAIN, data=MOCK_ENTRY_DATA).add_to_hass(hass)
+    """Test the host is stored stripped and in lowercase."""
     flow_id = await _start_flow(hass, TYPE_TCP)
 
     with _patch_temporary_unit(_gateway()):
         result = await hass.config_entries.flow.async_configure(
-            flow_id, {**MOCK_TCP_INPUT, "unit_id": 2}
+            flow_id, {**MOCK_TCP_INPUT, CONF_HOST: " Gateway.LOCAL "}
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_HOST] == "gateway.local"
+
+
+async def test_user_step_serial_other_unit_id_is_new(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock
+) -> None:
+    """Test a second unit ID on the same RS-485 bus is a second gateway."""
+    MockConfigEntry(domain=DOMAIN, data=MOCK_SERIAL_ENTRY_DATA).add_to_hass(hass)
+    flow_id = await _start_flow(hass, TYPE_SERIAL)
+
+    with _patch_temporary_unit(_gateway()):
+        result = await hass.config_entries.flow.async_configure(
+            flow_id, {**MOCK_SERIAL_INPUT, CONF_UNIT_ID: 2}
         )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -252,11 +288,100 @@ async def test_user_step_other_unit_id_is_new(
 async def _start_reconfigure(
     hass: HomeAssistant, entry: MockConfigEntry, step_id: str
 ) -> ConfigFlowResult:
-    """Open the reconfigure flow and check it lands on ``step_id``."""
+    """Open the reconfigure flow, pick ``step_id`` from its menu, and check it."""
     result = await entry.start_reconfigure_flow(hass)
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == [STEP_RECONFIGURE_TCP, STEP_RECONFIGURE_SERIAL]
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": step_id}
+    )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == step_id
     return result
+
+
+async def test_reconfigure_from_tcp_to_serial(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock
+) -> None:
+    """Test an entry can move from the network to RS-485 and keeps its ID."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_ENTRY_DATA)
+    entry.add_to_hass(hass)
+
+    result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_SERIAL)
+    assert get_schema_suggested_value(result["data_schema"].schema, CONF_DEVICE) is None
+    with _patch_temporary_unit(_gateway()):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], MOCK_SERIAL_INPUT
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data == MOCK_SERIAL_ENTRY_DATA
+
+
+@pytest.mark.parametrize(
+    ("other", "step_id", "user_input"),
+    [
+        pytest.param(MOCK_ENTRY_DATA, STEP_RECONFIGURE_TCP, MOCK_TCP_INPUT, id="tcp"),
+        pytest.param(
+            MOCK_SERIAL_ENTRY_DATA,
+            STEP_RECONFIGURE_SERIAL,
+            MOCK_SERIAL_INPUT,
+            id="serial",
+        ),
+    ],
+)
+async def test_reconfigure_onto_another_entrys_link(
+    hass: HomeAssistant,
+    mock_setup_entry: AsyncMock,
+    other: dict[str, Any],
+    step_id: str,
+    user_input: dict[str, Any],
+) -> None:
+    """Test an entry cannot move onto a gateway another entry already uses."""
+    MockConfigEntry(domain=DOMAIN, data=other).add_to_hass(hass)
+    entry = MockConfigEntry(
+        domain=DOMAIN, data={**MOCK_ENTRY_DATA, CONF_HOST: "192.168.1.200"}
+    )
+    entry.add_to_hass(hass)
+
+    result = await _start_reconfigure(hass, entry, step_id)
+    with _patch_temporary_unit(_gateway()) as mock_temporary_unit:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input
+        )
+
+    mock_temporary_unit.assert_not_called()
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data[CONF_HOST] == "192.168.1.200"
+
+
+async def test_reconfigure_no_ventilation_unit(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock
+) -> None:
+    """Test a reconfigure onto a gateway without a unit shows the error."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_ENTRY_DATA)
+    entry.add_to_hass(hass)
+    connection = _gateway()
+    seed(connection.for_unit(1), input_registers={**INPUT, 0x0001: 50})
+
+    result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_TCP)
+    with _patch_temporary_unit(connection):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**MOCK_TCP_INPUT, CONF_HOST: "192.168.1.101"}
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "no_ventilation_unit"}
+
+    with _patch_temporary_unit(_gateway()):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**MOCK_TCP_INPUT, CONF_HOST: "192.168.1.101"}
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
 
 
 async def test_reconfigure_tcp(

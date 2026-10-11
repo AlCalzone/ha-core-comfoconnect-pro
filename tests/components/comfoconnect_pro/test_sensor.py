@@ -70,3 +70,18 @@ async def test_active_error_states(
     await hass.async_block_till_done()
 
     assert hass.states.get("sensor.comfoair_active_error_1").state == state
+
+
+async def test_co2_zone_reading_zero_is_unknown(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    init_integration: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+) -> None:
+    """Test a CO₂ zone whose sensor drops out shows unknown, not 0 ppm."""
+    seed(mock_unit, input_registers={0x0012: 0})
+    freezer.tick(timedelta(seconds=SCAN_INTERVAL))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert hass.states.get("sensor.comfoair_co2_zone_1").state == STATE_UNKNOWN

@@ -38,6 +38,7 @@ jobs:
           uv pip install --python .venv/bin/python -e . -r requirements_test.txt -r requirements_test_pre_commit.txt \
             "$(pin 'modbus-connection\[tmodbus\]')" "$(pin tmodbus)" "$(pin pymodbus)" \
             "$(pin paho-mqtt)" "$(pin aiohasupervisor)" "$(pin aiousbwatcher)" "$(pin serialx)" \
+            "$(pin infrared-protocols)" \
             "comfoconnect-pro-modbus @ git+https://github.com/AlCalzone/comfoconnect-pro-modbus@main"
       - name: Generate translations
         working-directory: core
@@ -48,6 +49,21 @@ jobs:
           .venv/bin/python -m pytest tests/components/comfoconnect_pro
           --cov=homeassistant.components.comfoconnect_pro --cov-report=term-missing
           --cov-fail-under=95
+      - name: Mypy
+        working-directory: core
+        # Regenerate mypy.ini first, so the strict-typing entry applies. Then
+        # silence the modules mypy follows, whose requirements are missing.
+        run: |
+          PATH="$PWD/.venv/bin:$PATH" .venv/bin/python -m script.hassfest -p mypy_config
+          .venv/bin/mypy --follow-imports=silent homeassistant/components/comfoconnect_pro
+      - name: Hassfest
+        working-directory: core
+        # Skip quality_scale until the brands entry exists, because it fails
+        # the brands rule
+        run: >
+          PATH="$PWD/.venv/bin:$PATH" .venv/bin/python -m script.hassfest
+          --integration-path homeassistant/components/comfoconnect_pro
+          --skip-plugins quality_scale
       - name: Ruff
         working-directory: core
         run: |

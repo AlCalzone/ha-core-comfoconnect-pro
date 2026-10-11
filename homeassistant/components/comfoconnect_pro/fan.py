@@ -82,16 +82,21 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
 
     @override
     async def async_set_percentage(self, percentage: int) -> None:
-        """Switch to the preset closest to ``percentage`` and leave auto mode."""
+        """Leave auto mode, then switch to the preset closest to ``percentage``."""
         if percentage == 0:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="cannot_turn_off"
             )
         controls = self.coordinator.device.controls
         preset = percentage_to_ordered_list_item(SPEEDS, percentage)
-        await self._async_write(controls.async_write_ventilation_preset(preset))
-        if controls.auto_mode:
-            await self._async_write(controls.async_write_auto_mode(False))
+
+        async def _leave_auto_mode_and_set_speed() -> None:
+            # Write auto mode off unconditionally, because the cached state can
+            # be stale and the unit's auto mode would override the preset.
+            await controls.async_write_auto_mode(False)
+            await controls.async_write_ventilation_preset(preset)
+
+        await self._async_write(_leave_auto_mode_and_set_speed())
 
     @override
     async def async_set_preset_mode(self, preset_mode: str) -> None:

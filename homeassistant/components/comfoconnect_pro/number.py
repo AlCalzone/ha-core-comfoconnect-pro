@@ -19,10 +19,8 @@ from homeassistant.components.number import (
 )
 from homeassistant.const import EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
 from .coordinator import ComfoConnectProConfigEntry
 from .entity import ComfoConnectProEntity, ComfoConnectProEntityDescription
 
@@ -67,9 +65,7 @@ NUMBER_DESCRIPTIONS: tuple[ComfoConnectProNumberDescription, ...] = (
         native_step=1,
         mode=NumberMode.BOX,
         value_fn=lambda device: device.controls.boost_time,
-        write_fn=lambda device, value: device.controls.async_write_boost_time(
-            int(value)
-        ),
+        write_fn=lambda device, value: device.controls.async_write_boost_time(value),
     ),
 )
 
@@ -101,13 +97,6 @@ class ComfoConnectProNumber(ComfoConnectProEntity, NumberEntity):
     @override
     async def async_set_native_value(self, value: float) -> None:
         """Write the value to the gateway."""
-        try:
-            await self._async_write(
-                self.entity_description.write_fn(self.coordinator.device, value)
-            )
-        except ValueError as err:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="invalid_value",
-                translation_placeholders={"value": str(value), "error": str(err)},
-            ) from err
+        await self._async_write(
+            self.entity_description.write_fn(self.coordinator.device, value)
+        )

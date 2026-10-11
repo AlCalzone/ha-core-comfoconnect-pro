@@ -79,11 +79,12 @@ Home Assistant can share a Modbus connection between integrations. Another integ
 
 ## Reconfiguration
 
-If the gateway gets a new IP address, or you change its serial settings, you can update them without removing the integration:
+If the gateway gets a new IP address, you change its serial settings, or you move it between the network and RS-485, you can update it without removing the integration:
 
 1. Go to {% my integrations title="**Settings** > **Devices & services**" %} and find the **Zehnder ComfoConnect PRO** integration.
 2. Select the three-dot menu {% icon "mdi:dots-vertical" %} and choose **Reconfigure**.
-3. Update the settings, then select **Submit**.
+3. Choose **Network (Modbus TCP)** or **Serial port (Modbus RTU)**.
+4. Update the settings, then select **Submit**.
 
 ## Supported functionality
 
@@ -165,7 +166,7 @@ If one block of registers fails to read, only the entities from that block becom
 
 ## Known limitations
 
-- The gateway has no serial number over Modbus. The integration tells gateways apart by their connection settings, so the same gateway added twice with different settings shows up twice.
+- The gateway has no serial number over Modbus. The integration tells gateways apart by host and port, or by serial port and unit ID. The same gateway added once by IP address and once by hostname shows up twice.
 - The ventilation unit cannot be turned off or put into standby over Modbus.
 - The manual does not say what a CO₂ zone without a sensor reports. The integration takes 0 to mean no sensor.
 - The manual gives no range for the external setpoint. The integration allows 0 to 40 °C.

@@ -23,7 +23,7 @@ rules:
     comment: This integration does not provide any triggers.
   entity-event-setup:
     status: exempt
-    comment: local_polling; entities rely solely on CoordinatorEntity's built-in lifecycle, no manual event subscriptions.
+    comment: Entities subscribe to nothing themselves. The one coordinator listener, which adds CO₂ zone sensors, is removed through entry.async_on_unload.
   entity-unique-id: done
   has-entity-name: done
   runtime-data: done

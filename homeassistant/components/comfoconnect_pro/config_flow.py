@@ -85,12 +85,23 @@ STEP_SERIAL_DATA_SCHEMA = probatio.Schema(
 )
 
 
+def _link_data(connection_type: str, user_input: Mapping[str, Any]) -> dict[str, Any]:
+    """Entry data for a form's input, with the host in one canonical spelling."""
+    data = {CONF_TYPE: connection_type, **user_input}
+    if CONF_HOST in data:
+        data[CONF_HOST] = data[CONF_HOST].strip().lower()
+    return data
+
+
 def _link_identity(data: Mapping[str, Any]) -> dict[str, Any]:
-    """The entry data that names the gateway's link, for duplicate checks."""
+    """The entry data that names the gateway's link, for duplicate checks.
+
+    A TCP gateway may answer on any unit ID, so its identity leaves the ID out.
+    """
     if data[CONF_TYPE] == TYPE_SERIAL:
         keys: tuple[str, ...] = (CONF_TYPE, CONF_DEVICE, CONF_UNIT_ID)
     else:
-        keys = (CONF_TYPE, CONF_HOST, CONF_PORT, CONF_UNIT_ID)
+        keys = (CONF_TYPE, CONF_HOST, CONF_PORT)
     return {key: data[key] for key in keys}
 
 
@@ -139,7 +150,7 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         description_placeholders: dict[str, str] = {}
         if user_input is not None:
-            data = {CONF_TYPE: connection_type, **user_input}
+            data = _link_data(connection_type, user_input)
             # The gateway has no serial number, so its link identifies it.
             self._async_abort_entries_match(_link_identity(data))
             errors, description_placeholders = await self._async_validate(data)
@@ -156,11 +167,11 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle updating an existing entry's connection details."""
-        entry = self._get_reconfigure_entry()
-        if entry.data[CONF_TYPE] == TYPE_SERIAL:
-            return await self.async_step_reconfigure_serial()
-        return await self.async_step_reconfigure_tcp()
+        """Let the user pick how the gateway is reached now."""
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=[STEP_RECONFIGURE_TCP, STEP_RECONFIGURE_SERIAL],
+        )
 
     async def async_step_reconfigure_tcp(
         self, user_input: dict[str, Any] | None = None
@@ -190,7 +201,8 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         description_placeholders: dict[str, str] = {}
         if user_input is not None:
-            data = {CONF_TYPE: connection_type, **user_input}
+            data = _link_data(connection_type, user_input)
+            self._async_abort_entries_match(_link_identity(data))
 
             # Release the entry's hold on the old link first, because the
             # shared connection refuses other settings for the same endpoint.
@@ -210,11 +222,11 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
             if relinking:
                 await self.hass.config_entries.async_setup(entry.entry_id)
 
+        if user_input is None and entry.data[CONF_TYPE] == connection_type:
+            user_input = _suggested(entry.data)
         return self.async_show_form(
             step_id=step_id,
-            data_schema=self.add_suggested_values_to_schema(
-                schema, user_input or _suggested(entry.data)
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input),
             errors=errors,
             description_placeholders=description_placeholders,
         )

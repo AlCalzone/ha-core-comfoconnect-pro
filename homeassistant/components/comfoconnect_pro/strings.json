@@ -8,6 +8,13 @@
       "no_ventilation_unit": "The gateway answered, but it does not reach a ComfoAir Q or Flex ventilation unit (connection state {state}). Check the ComfoNet cable and the unit's firmware."
     },
     "step": {
+      "reconfigure": {
+        "description": "Choose how Home Assistant reaches this gateway now.",
+        "menu_options": {
+          "reconfigure_serial": "[%key:component::comfoconnect_pro::config::step::user::menu_options::serial%]",
+          "reconfigure_tcp": "[%key:component::comfoconnect_pro::config::step::user::menu_options::tcp%]"
+        }
+      },
       "reconfigure_serial": {
         "data": {
           "baudrate": "[%key:component::comfoconnect_pro::config::step::serial::data::baudrate%]",
@@ -258,10 +265,13 @@
       "message": "The ventilation unit cannot be turned off over Modbus. Choose the away speed instead."
     },
     "invalid_value": {
-      "message": "The gateway does not accept {value}: {error}"
+      "message": "The gateway does not accept this value: {error}"
+    },
+    "link_settings_in_use": {
+      "message": "The gateway cannot be set up with these link settings: {error}"
     },
     "modbus_error": {
-      "message": "Lost the Modbus link to the ComfoConnect PRO"
+      "message": "Lost the Modbus link to the ComfoConnect PRO: {error}"
     },
     "no_component_answered": {
       "message": "The ComfoConnect PRO refused every read"

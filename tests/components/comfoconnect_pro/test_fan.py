@@ -44,7 +44,7 @@ async def test_fan(
 async def test_set_percentage_leaves_auto_mode(
     hass: HomeAssistant, mock_unit: MockModbusUnit
 ) -> None:
-    """Test a speed writes its preset and turns auto mode off."""
+    """Test a speed turns auto mode off, then writes its preset."""
     writes: list[WriteEvent] = []
     mock_unit.on_write(writes.append)
 
@@ -56,16 +56,19 @@ async def test_set_percentage_leaves_auto_mode(
     )
 
     assert writes == [
-        WriteEvent("holding", address(0x0001), [3], 0x06),
         WriteEvent("coil", address(0x0006), [False], 0x05),
+        WriteEvent("holding", address(0x0001), [3], 0x06),
     ]
 
 
 @pytest.mark.usefixtures("init_integration")
-async def test_set_percentage_in_manual_mode(
+async def test_set_percentage_with_stale_auto_mode(
     hass: HomeAssistant, mock_unit: MockModbusUnit, freezer: FrozenDateTimeFactory
 ) -> None:
-    """Test a speed in manual mode writes only its preset."""
+    """Test a speed writes auto mode off even when the cache says it is off.
+
+    The user may have turned auto mode on at the unit since the last poll.
+    """
     seed(mock_unit, coil={**COIL, 0x0006: False})
     freezer.tick(timedelta(seconds=SCAN_INTERVAL))
     async_fire_time_changed(hass)
@@ -81,7 +84,10 @@ async def test_set_percentage_in_manual_mode(
         blocking=True,
     )
 
-    assert writes == [WriteEvent("holding", address(0x0001), [0], 0x06)]
+    assert writes == [
+        WriteEvent("coil", address(0x0006), [False], 0x05),
+        WriteEvent("holding", address(0x0001), [0], 0x06),
+    ]
     assert hass.states.get(FAN).attributes[ATTR_PERCENTAGE] == 25
 
 

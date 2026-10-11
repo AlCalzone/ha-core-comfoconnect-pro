@@ -139,7 +139,8 @@ def co2_sensor(zone: int) -> ComfoConnectProSensorDescription:
         device_class=SensorDeviceClass.CO2,
         native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda device: device.sensors.co2(zone),
+        # A zone whose sensor drops out reads 0, which is no measurement
+        value_fn=lambda device: device.sensors.co2(zone) or None,
     )
 
 

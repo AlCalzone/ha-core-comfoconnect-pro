@@ -1,11 +1,13 @@
 """Tests for the Zehnder ComfoConnect PRO integration setup."""
 
 from datetime import timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from comfoconnect_pro_modbus.model import address
 from freezegun.api import FrozenDateTimeFactory
 from modbus_connection import (
+    GatewayPathUnavailableError,
+    GatewayTargetError,
     IllegalDataAddressError,
     ModbusConnectionError,
     ModbusSerialParams,
@@ -19,7 +21,9 @@ from homeassistant.components.comfoconnect_pro.const import DOMAIN, SCAN_INTERVA
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from . import INPUT, MOCK_SERIAL_ENTRY_DATA, seed
 
@@ -199,3 +203,60 @@ async def test_lost_ventilation_unit_makes_everything_unavailable(
     await _tick(hass, freezer)
 
     assert hass.states.get(AIRFLOW).state == "175"
+
+
+async def test_setup_fails_when_the_link_is_held_with_other_settings(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test a link another entry holds with other settings fails setup for good."""
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "homeassistant.components.comfoconnect_pro.async_get_unit",
+        side_effect=HomeAssistantError("in use with other settings"),
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+
+    assert mock_config_entry.state is ConfigEntryState.SETUP_ERROR
+    assert mock_config_entry.reason == (
+        "The gateway cannot be set up with these link settings: "
+        "in use with other settings"
+    )
+
+
+@pytest.mark.parametrize("platforms", [[Platform.SENSOR]])
+@pytest.mark.parametrize("error", [GatewayPathUnavailableError, GatewayTargetError])
+async def test_gateway_refusing_every_read_reports_no_ventilation_unit(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    init_integration: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+    error: type[Exception],
+) -> None:
+    """Test a gateway that lost its unit and refuses every read says so."""
+    mock_unit.fail_read(address(0x0001), error(), register_type="discrete")
+    mock_unit.fail_read(address(0x0007), error(), register_type="input")
+    mock_unit.fail_read(address(0x0001), error(), register_type="holding")
+    await _tick(hass, freezer)
+
+    coordinator = init_integration.runtime_data.coordinator
+    assert not coordinator.last_update_success
+    assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert coordinator.last_exception.translation_key == "no_ventilation_unit"
+    assert hass.states.get(AIRFLOW).state == STATE_UNAVAILABLE
+
+
+@pytest.mark.parametrize("platforms", [[Platform.SENSOR]])
+async def test_dead_link_names_the_error(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    init_integration: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+) -> None:
+    """Test a lost link carries the Modbus error into the failure."""
+    mock_unit.fail_requests(ModbusConnectionError("socket closed"))
+    await _tick(hass, freezer)
+
+    exception = init_integration.runtime_data.coordinator.last_exception
+    assert isinstance(exception, UpdateFailed)
+    assert exception.translation_key == "modbus_error"
+    assert exception.translation_placeholders == {"error": "socket closed"}
