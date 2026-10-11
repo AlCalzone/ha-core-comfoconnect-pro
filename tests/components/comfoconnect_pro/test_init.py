@@ -225,7 +225,7 @@ async def test_setup_fails_when_the_link_is_held_with_other_settings(
 
 @pytest.mark.parametrize("platforms", [[Platform.SENSOR]])
 @pytest.mark.parametrize("error", [GatewayPathUnavailableError, GatewayTargetError])
-async def test_gateway_refusing_every_read_reports_no_ventilation_unit(
+async def test_gateway_refusing_every_read_reports_no_path(
     hass: HomeAssistant,
     freezer: FrozenDateTimeFactory,
     init_integration: MockConfigEntry,
@@ -241,7 +241,7 @@ async def test_gateway_refusing_every_read_reports_no_ventilation_unit(
     coordinator = init_integration.runtime_data.coordinator
     assert not coordinator.last_update_success
     assert isinstance(coordinator.last_exception, UpdateFailed)
-    assert coordinator.last_exception.translation_key == "no_ventilation_unit"
+    assert coordinator.last_exception.translation_key == "no_path_to_unit"
     assert hass.states.get(AIRFLOW).state == STATE_UNAVAILABLE
 
 

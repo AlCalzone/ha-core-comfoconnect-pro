@@ -5,6 +5,7 @@
     },
     "error": {
       "cannot_connect": "Failed to connect: {error}",
+      "no_path_to_unit": "The gateway answered, but it has no path to a ventilation unit. Check the ComfoNet cable.",
       "no_ventilation_unit": "The gateway answered, but it does not reach a ComfoAir Q or Flex ventilation unit (connection state {state}). Check the ComfoNet cable and the unit's firmware."
     },
     "step": {
@@ -275,6 +276,9 @@
     },
     "no_component_answered": {
       "message": "The ComfoConnect PRO refused every read"
+    },
+    "no_path_to_unit": {
+      "message": "The ComfoConnect PRO has no path to the ventilation unit"
     },
     "no_ventilation_unit": {
       "message": "The ComfoConnect PRO does not reach a supported ventilation unit (connection state {state})"

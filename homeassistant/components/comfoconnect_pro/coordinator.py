@@ -72,8 +72,7 @@ class ComfoConnectProDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
                 # The gateway refuses every read once it loses the unit
                 raise UpdateFailed(
                     translation_domain=DOMAIN,
-                    translation_key="no_ventilation_unit",
-                    translation_placeholders={"state": "unknown"},
+                    translation_key="no_path_to_unit",
                 )
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -84,13 +83,10 @@ class ComfoConnectProDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
 
         status = self.device.status
         if "status" in report.updated and not status.is_connected:
-            code = status.connection_code
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="no_ventilation_unit",
-                translation_placeholders={
-                    "state": "unknown" if code is None else str(code)
-                },
+                translation_placeholders={"state": str(status.connection_code)},
             )
 
         return report

@@ -51,7 +51,11 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
         return self.entity_description.component not in self.coordinator.data.failed
 
     async def _async_write(self, write: Awaitable[None]) -> None:
-        """Send a write to the gateway, then refresh."""
+        """Send a write to the gateway, then refresh.
+
+        The refresh runs after a failed write too, because part of a write
+        sequence may have reached the gateway.
+        """
         try:
             await write
         except InvalidValueError as err:
@@ -65,4 +69,5 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
                 translation_domain=DOMAIN,
                 translation_key="write_failed",
             ) from err
-        await self.coordinator.async_request_refresh()
+        finally:
+            await self.coordinator.async_request_refresh()

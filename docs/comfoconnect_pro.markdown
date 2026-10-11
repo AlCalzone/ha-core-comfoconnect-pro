@@ -86,6 +86,12 @@ If the gateway gets a new IP address, you change its serial settings, or you mov
 3. Choose **Network (Modbus TCP)** or **Serial port (Modbus RTU)**.
 4. Update the settings, then select **Submit**.
 
+When two gateways share one RS-485 bus, they also share its baud rate and parity. Reconfiguring one of them to new line settings fails with **Failed to connect**, because the other entry still holds the bus with the old ones. To change the line settings of both:
+
+1. Disable the second entry.
+2. Reconfigure the first entry to the new settings.
+3. Enable the second entry and reconfigure it to the same settings.
+
 ## Supported functionality
 
 All entities belong to one device, named after the config entry.
@@ -167,6 +173,7 @@ If one block of registers fails to read, only the entities from that block becom
 ## Known limitations
 
 - The gateway has no serial number over Modbus. The integration tells gateways apart by host and port, or by serial port and unit ID. The same gateway added once by IP address and once by hostname shows up twice.
+- Two gateways behind one Modbus TCP-to-RTU converter, on different unit IDs, cannot both be added. The integration identifies a TCP gateway by host and port only.
 - The ventilation unit cannot be turned off or put into standby over Modbus.
 - The manual does not say what a CO₂ zone without a sensor reports. The integration takes 0 to mean no sensor.
 - The manual gives no range for the external setpoint. The integration allows 0 to 40 °C.

@@ -5,7 +5,12 @@ from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock, _patch, patch
 
-from modbus_connection import ModbusSerialParams, ModbusTcpParams, ModbusTimeoutError
+from modbus_connection import (
+    GatewayPathUnavailableError,
+    ModbusSerialParams,
+    ModbusTcpParams,
+    ModbusTimeoutError,
+)
 from modbus_connection.mock import MockModbusConnection, MockModbusUnit
 import pytest
 
@@ -525,3 +530,67 @@ async def test_reconfigure_new_line_settings_failing(
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
+
+
+async def test_user_step_no_path_to_unit(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock
+) -> None:
+    """Test a gateway that refuses the state read for lack of a unit says so."""
+    connection = _gateway()
+    connection.for_unit(1).fail_read(
+        0, GatewayPathUnavailableError(), register_type="input"
+    )
+    flow_id = await _start_flow(hass, TYPE_TCP)
+
+    with _patch_temporary_unit(connection):
+        result = await hass.config_entries.flow.async_configure(flow_id, MOCK_TCP_INPUT)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "no_path_to_unit"}
+
+    with _patch_temporary_unit(_gateway()):
+        result = await hass.config_entries.flow.async_configure(flow_id, MOCK_TCP_INPUT)
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_user_step_keeps_an_ipv6_scope_id(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock
+) -> None:
+    """Test only the address part of an IPv6 host is folded to lowercase."""
+    flow_id = await _start_flow(hass, TYPE_TCP)
+
+    with _patch_temporary_unit(_gateway()):
+        result = await hass.config_entries.flow.async_configure(
+            flow_id, {**MOCK_TCP_INPUT, CONF_HOST: "FE80::1%Eth0"}
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_HOST] == "fe80::1%Eth0"
+
+
+@pytest.mark.usefixtures("mock_get_unit")
+async def test_reconfigure_unexpected_probe_error_sets_the_entry_back_up(
+    hass: HomeAssistant,
+) -> None:
+    """Test an unexpected probe error on new line settings restores the entry."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_SERIAL_ENTRY_DATA)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_SERIAL)
+    with (
+        patch(
+            "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+            return_value=_RaisingTemporaryUnit(RuntimeError("boom")),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**MOCK_SERIAL_INPUT, CONF_BAUDRATE: "9600"}
+        )
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert entry.data == MOCK_SERIAL_ENTRY_DATA
+    assert entry.state is ConfigEntryState.LOADED

@@ -89,7 +89,9 @@ def _link_data(connection_type: str, user_input: Mapping[str, Any]) -> dict[str,
     """Entry data for a form's input, with the host in one canonical spelling."""
     data = {CONF_TYPE: connection_type, **user_input}
     if CONF_HOST in data:
-        data[CONF_HOST] = data[CONF_HOST].strip().lower()
+        # Fold the host's case, but keep an IPv6 scope ID such as %Eth0 as typed
+        host, percent, scope = data[CONF_HOST].strip().partition("%")
+        data[CONF_HOST] = host.lower() + percent + scope
     return data
 
 
@@ -215,12 +217,17 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
                         entry.entry_id
                     )
 
-            errors, description_placeholders = await self._async_validate(data)
-
-            if not errors:
-                return self.async_update_reload_and_abort(entry, data=data)
-            if relinking:
-                await self.hass.config_entries.async_setup(entry.entry_id)
+            updated = False
+            try:
+                errors, description_placeholders = await self._async_validate(data)
+                if not errors:
+                    updated = True
+                    return self.async_update_reload_and_abort(entry, data=data)
+            finally:
+                # Set the entry back up on its old settings however the probe
+                # ended, unless the update reloads it on the new ones.
+                if relinking and not updated:
+                    await self.hass.config_entries.async_setup(entry.entry_id)
 
         if user_input is None and entry.data[CONF_TYPE] == connection_type:
             user_input = _suggested(entry.data)
@@ -238,8 +245,9 @@ class ComfoConnectProConfigFlow(ConfigFlow, domain=DOMAIN):
         try:
             await _async_probe(self.hass, data)
         except NoVentilationUnitError as err:
-            state = "unknown" if err.code is None else str(err.code)
-            return {"base": "no_ventilation_unit"}, {"state": state}
+            if err.code is None:
+                return {"base": "no_path_to_unit"}, {}
+            return {"base": "no_ventilation_unit"}, {"state": str(err.code)}
         except (ModbusError, HomeAssistantError) as err:
             return {"base": "cannot_connect"}, {"error": str(err)}
         return {}, {}

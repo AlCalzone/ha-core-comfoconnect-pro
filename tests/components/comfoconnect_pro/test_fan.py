@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from comfoconnect_pro_modbus.model import address
 from freezegun.api import FrozenDateTimeFactory
+from modbus_connection import IllegalDataValueError
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest
 from syrupy.assertion import SnapshotAssertion
@@ -18,7 +19,7 @@ from homeassistant.components.fan import (
 )
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from . import COIL, seed
@@ -125,3 +126,24 @@ async def test_set_preset_auto(hass: HomeAssistant, mock_unit: MockModbusUnit) -
     )
 
     assert writes == [WriteEvent("coil", address(0x0006), [True], 0x05)]
+
+
+@pytest.mark.usefixtures("init_integration")
+async def test_half_applied_speed_change_refreshes(
+    hass: HomeAssistant, mock_unit: MockModbusUnit
+) -> None:
+    """Test the state follows the unit when auto mode went off but the preset failed."""
+    mock_unit.fail_write(address(0x0001), IllegalDataValueError())
+
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            FAN_DOMAIN,
+            SERVICE_SET_PERCENTAGE,
+            {ATTR_ENTITY_ID: FAN, ATTR_PERCENTAGE: 100},
+            blocking=True,
+        )
+    await hass.async_block_till_done()
+
+    state = hass.states.get(FAN)
+    assert state.attributes[ATTR_PRESET_MODE] is None
+    assert state.attributes[ATTR_PERCENTAGE] == 75
