@@ -1,0 +1,123 @@
+# serializer version: 1
+# name: test_selects[platforms0][select.comfoair_temperature_profile-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'normal',
+        'cold',
+        'warm',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <ANY>,
+    'disabled_by': None,
+    'domain': 'select',
+    'entity_category': <EntityCategory.CONFIG: 'config'>,
+    'entity_id': 'select.comfoair_temperature_profile',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Temperature profile',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Temperature profile',
+    'platform': 'comfoconnect_pro',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'temperature_profile',
+    'unique_id': '01K0COMFOCONNECTPRO000000_temperature_profile',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_selects[platforms0][select.comfoair_temperature_profile-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'ComfoAir Temperature profile',
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'normal',
+        'cold',
+        'warm',
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'select.comfoair_temperature_profile',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'normal',
+  })
+# ---
+# name: test_selects[platforms0][select.comfoair_temperature_profile_mode-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'adaptive',
+        'fixed',
+        'external_setpoint',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': <ANY>,
+    'device_class': None,
+    'device_id': <ANY>,
+    'disabled_by': None,
+    'domain': 'select',
+    'entity_category': <EntityCategory.CONFIG: 'config'>,
+    'entity_id': 'select.comfoair_temperature_profile_mode',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Temperature profile mode',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Temperature profile mode',
+    'platform': 'comfoconnect_pro',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'temperature_profile_mode',
+    'unique_id': '01K0COMFOCONNECTPRO000000_temperature_profile_mode',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_selects[platforms0][select.comfoair_temperature_profile_mode-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'ComfoAir Temperature profile mode',
+      <SelectEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'adaptive',
+        'fixed',
+        'external_setpoint',
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'select.comfoair_temperature_profile_mode',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'adaptive',
+  })
+# ---

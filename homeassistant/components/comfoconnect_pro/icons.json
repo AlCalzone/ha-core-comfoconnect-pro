@@ -1,0 +1,64 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "comfohood": {
+        "default": "mdi:stove"
+      },
+      "filter_dirty": {
+        "default": "mdi:air-filter"
+      },
+      "standby": {
+        "default": "mdi:power-standby"
+      }
+    },
+    "button": {
+      "reset_errors": {
+        "default": "mdi:alert-remove-outline"
+      }
+    },
+    "fan": {
+      "ventilation": {
+        "default": "mdi:fan",
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "auto": "mdi:fan-auto"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "boost_time": {
+        "default": "mdi:timer-outline"
+      }
+    },
+    "select": {
+      "temperature_profile": {
+        "default": "mdi:thermometer"
+      },
+      "temperature_profile_mode": {
+        "default": "mdi:thermometer-auto"
+      }
+    },
+    "sensor": {
+      "active_error": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "filter_days_remaining": {
+        "default": "mdi:air-filter"
+      }
+    },
+    "switch": {
+      "away": {
+        "default": "mdi:home-export-outline"
+      },
+      "boost": {
+        "default": "mdi:fan-plus"
+      },
+      "comfocool": {
+        "default": "mdi:snowflake"
+      }
+    }
+  }
+}
