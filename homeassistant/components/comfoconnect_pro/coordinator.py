@@ -40,7 +40,6 @@ class ComfoConnectProDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
         self.device = device
-        self._failing: set[str] = set()
 
     @cached_property
     def device_info(self) -> dr.DeviceInfo:
@@ -71,26 +70,15 @@ class ComfoConnectProDataUpdateCoordinator(DataUpdateCoordinator[UpdateReport]):
 
         status = self.device.status
         if "status" in report.updated and not status.is_connected:
-            state = status.connection_state
+            code = status.connection_code
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="no_ventilation_unit",
                 translation_placeholders={
-                    "state": "unknown" if state is None else str(state.value)
+                    "state": "unknown" if code is None else str(code)
                 },
             )
 
-        for name, cause in report.failed.items():
-            if name not in self._failing:
-                _LOGGER.warning(
-                    "%s: %s failed to refresh and is unavailable: %s",
-                    self.name,
-                    name,
-                    cause,
-                )
-        for name in self._failing & report.updated:
-            _LOGGER.info("%s: %s is available again", self.name, name)
-        self._failing = (self._failing - report.updated) | set(report.failed)
         return report
 
 
