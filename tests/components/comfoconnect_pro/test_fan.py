@@ -322,28 +322,37 @@ async def test_state_ignores_polls_before_the_unit_shows_a_write(
     assert hass.states.get(FAN).attributes[ATTR_PRESET_MODE] == "auto"
 
 
-@pytest.mark.parametrize("preset_mode", ["away", "boost"])
-async def test_auto_shows_the_speed_from_before_a_boost_or_away(
+@pytest.mark.parametrize(
+    ("service", "data", "preset"),
+    [
+        pytest.param(
+            SERVICE_SET_PERCENTAGE, {ATTR_PERCENTAGE: 100}, 3, id="manual_speed"
+        ),
+        pytest.param(SERVICE_SET_PRESET_MODE, {ATTR_PRESET_MODE: "away"}, 0, id="away"),
+        pytest.param(
+            SERVICE_SET_PRESET_MODE, {ATTR_PRESET_MODE: "boost"}, 3, id="boost"
+        ),
+    ],
+)
+async def test_auto_shows_the_speed_it_last_ran_at(
     hass: HomeAssistant,
     mock_unit: MockModbusUnit,
     init_integration: MockConfigEntry,
     freezer: FrozenDateTimeFactory,
-    preset_mode: str,
+    service: str,
+    data: dict[str, Any],
+    preset: int,
 ) -> None:
-    """Test ending a boost or away with auto shows the speed from before them.
+    """Test choosing auto shows the speed auto mode ran at before.
 
-    The unit returns to it, but shows it only seconds after the write.
+    Auto mode returns to it, but the unit shows it only seconds after the
+    write.
     """
     await hass.services.async_call(
-        FAN_DOMAIN,
-        SERVICE_SET_PRESET_MODE,
-        {ATTR_ENTITY_ID: FAN, ATTR_PRESET_MODE: preset_mode},
-        blocking=True,
+        FAN_DOMAIN, service, {ATTR_ENTITY_ID: FAN, **data}, blocking=True
     )
-    # The unit moves the preset for the boost or away
-    seed(mock_unit, holding={0x0001: 3 if preset_mode == "boost" else 0})
+    seed(mock_unit, holding={0x0001: preset})
     await wait_for_write_refresh(hass, freezer)
-    assert hass.states.get(FAN).attributes[ATTR_PRESET_MODE] == preset_mode
 
     await hass.services.async_call(
         FAN_DOMAIN,
@@ -355,3 +364,37 @@ async def test_auto_shows_the_speed_from_before_a_boost_or_away(
     state = hass.states.get(FAN)
     assert state.attributes[ATTR_PRESET_MODE] == "auto"
     assert state.attributes[ATTR_PERCENTAGE] == 66
+
+
+async def test_auto_ignores_polls_before_the_unit_shows_a_write(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    init_integration: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test a poll pairing auto mode with the old manual speed is not remembered."""
+    await hass.services.async_call(
+        FAN_DOMAIN,
+        SERVICE_SET_PERCENTAGE,
+        {ATTR_ENTITY_ID: FAN, ATTR_PERCENTAGE: 100},
+        blocking=True,
+    )
+    await wait_for_write_refresh(hass, freezer)
+    await hass.services.async_call(
+        FAN_DOMAIN,
+        SERVICE_SET_PRESET_MODE,
+        {ATTR_ENTITY_ID: FAN, ATTR_PRESET_MODE: "auto"},
+        blocking=True,
+    )
+    # Auto mode is on, but the unit still shows the manual speed
+    await init_integration.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    for service, data in (
+        (SERVICE_SET_PERCENTAGE, {ATTR_PERCENTAGE: 33}),
+        (SERVICE_SET_PRESET_MODE, {ATTR_PRESET_MODE: "auto"}),
+    ):
+        await hass.services.async_call(
+            FAN_DOMAIN, service, {ATTR_ENTITY_ID: FAN, **data}, blocking=True
+        )
+    assert hass.states.get(FAN).attributes[ATTR_PERCENTAGE] == 66
