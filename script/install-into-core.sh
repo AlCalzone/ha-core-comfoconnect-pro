@@ -11,15 +11,15 @@ core=$(cd "${1:?usage: $0 <path to a home-assistant/core checkout>}" && pwd)
 here=$(cd "$(dirname "$0")/.." && pwd)
 
 rsync -a --delete --exclude translations --exclude __pycache__ \
-  "$here/homeassistant/components/comfoconnect_pro/" "$core/homeassistant/components/comfoconnect_pro/"
+  "$here/homeassistant/components/comfoconnect_modbus/" "$core/homeassistant/components/comfoconnect_modbus/"
 rsync -a --delete --exclude __pycache__ \
-  "$here/tests/components/comfoconnect_pro/" "$core/tests/components/comfoconnect_pro/"
+  "$here/tests/components/comfoconnect_modbus/" "$core/tests/components/comfoconnect_modbus/"
 
 # Opt the integration into strict typing, keeping the list sorted
 python3 - "$core/.strict-typing" <<'EOF'
 import sys
 
-path, entry = sys.argv[1], "homeassistant.components.comfoconnect_pro.*"
+path, entry = sys.argv[1], "homeassistant.components.comfoconnect_modbus.*"
 lines = open(path).read().splitlines()
 if entry not in lines:
     for i, line in enumerate(lines):
@@ -36,7 +36,7 @@ if [[ ! -x $python ]]; then
 fi
 
 cd "$core"
-"$python" -m script.translations develop --integration comfoconnect_pro
+"$python" -m script.translations develop --integration comfoconnect_modbus
 # Run only the plugins that generate files. The quality_scale plugin fails
 # until the brands entry exists, and any failure cancels generation.
 PATH="$core/.venv/bin:$PATH" "$python" -m script.hassfest \

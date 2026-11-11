@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-DOMAIN = "comfoconnect_pro"
+DOMAIN = "comfoconnect_modbus"
 MANUFACTURER = "Zehnder"
 MODEL = "ComfoConnect PRO"
 

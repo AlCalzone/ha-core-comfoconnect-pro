@@ -7,7 +7,7 @@ from modbus_connection.mock import MockModbusConnection, MockModbusUnit
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
-from homeassistant.components.comfoconnect_pro.const import DEFAULT_NAME, DOMAIN
+from homeassistant.components.comfoconnect_modbus.const import DEFAULT_NAME, DOMAIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
@@ -18,7 +18,7 @@ from . import MOCK_ENTRY_DATA, seed_gateway
 def mock_setup_entry() -> Generator[AsyncMock]:
     """Override async_setup_entry."""
     with patch(
-        "homeassistant.components.comfoconnect_pro.async_setup_entry",
+        "homeassistant.components.comfoconnect_modbus.async_setup_entry",
         new_callable=AsyncMock,
         return_value=None,
     ) as mock_setup_entry:
@@ -54,7 +54,7 @@ def mock_config_entry() -> MockConfigEntry:
 def mock_get_unit(mock_connection: MockModbusConnection) -> Generator[MagicMock]:
     """Hand out units on the mock connection when the entry sets up."""
     with patch(
-        "homeassistant.components.comfoconnect_pro.async_get_unit",
+        "homeassistant.components.comfoconnect_modbus.async_get_unit",
         side_effect=lambda hass, entry, params, unit_id: mock_connection.for_unit(
             unit_id
         ),
@@ -85,7 +85,7 @@ async def init_integration(
 ) -> MockConfigEntry:
     """Set up the ComfoConnect PRO integration for testing."""
     mock_config_entry.add_to_hass(hass)
-    with patch("homeassistant.components.comfoconnect_pro.PLATFORMS", platforms):
+    with patch("homeassistant.components.comfoconnect_modbus.PLATFORMS", platforms):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done(wait_background_tasks=True)
     return mock_config_entry

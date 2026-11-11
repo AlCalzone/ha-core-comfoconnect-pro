@@ -8,7 +8,7 @@ from freezegun.api import FrozenDateTimeFactory
 from modbus_connection.mock import MockModbusUnit
 from pytest_homeassistant.common import MockConfigEntry, async_fire_time_changed
 
-from homeassistant.components.comfoconnect_pro.const import (
+from homeassistant.components.comfoconnect_modbus.const import (
     CONF_BAUDRATE,
     CONF_PARITY,
     CONF_UNIT_ID,
@@ -91,7 +91,7 @@ async def setup_integration(
 ) -> None:
     """Set up the integration with ``platforms``, for a test that seeds first."""
     entry.add_to_hass(hass)
-    with patch("homeassistant.components.comfoconnect_pro.PLATFORMS", platforms):
+    with patch("homeassistant.components.comfoconnect_modbus.PLATFORMS", platforms):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done(wait_background_tasks=True)
 

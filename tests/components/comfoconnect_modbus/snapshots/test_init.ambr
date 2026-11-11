@@ -13,7 +13,7 @@
     'id': <ANY>,
     'identifiers': set({
       tuple(
-        'comfoconnect_pro',
+        'comfoconnect_modbus',
         '01K0COMFOCONNECTPRO000000',
       ),
     }),
