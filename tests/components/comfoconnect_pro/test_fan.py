@@ -182,7 +182,12 @@ async def test_set_preset_mode(
     ("coil", "preset", "preset_mode", "percentage"),
     [
         pytest.param({0x0007: True}, 3, "boost", 100, id="boost"),
+        # The unit moves the preset seconds after the coil turns on
+        pytest.param({0x0007: True}, 2, "boost", 100, id="boost_starting"),
         pytest.param({0x0008: True}, 0, "away", None, id="away"),
+        pytest.param({0x0008: True}, 2, "away", None, id="away_starting"),
+        # and leaves it on away for seconds after the coil turns off
+        pytest.param({0x0006: True}, 0, "auto", None, id="away_ending"),
         pytest.param({0x0006: True}, 2, "auto", 66, id="auto"),
         pytest.param({0x0006: False}, 1, None, 33, id="manual"),
     ],

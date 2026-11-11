@@ -104,8 +104,17 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
         return PRESET_AUTO if controls.auto_mode else None
 
     def _reported_percentage(self) -> int | None:
-        """Return the speed of the preset the unit last reported."""
-        preset = self.coordinator.device.controls.ventilation_preset
+        """Return the speed the unit last reported.
+
+        The unit moves the preset to high for a boost and to away for the away
+        function only seconds after the coil turns on, so the coils decide.
+        """
+        controls = self.coordinator.device.controls
+        if controls.boost:
+            return 100
+        if controls.away_function:
+            return None
+        preset = controls.ventilation_preset
         if preset not in SPEEDS:
             return None
         return ordered_list_item_to_percentage(SPEEDS, preset)
