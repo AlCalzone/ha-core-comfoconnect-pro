@@ -1,6 +1,7 @@
 """Tests for the Zehnder ComfoConnect PRO number platform."""
 
 from comfoconnect_pro_modbus.model import address
+from freezegun.api import FrozenDateTimeFactory
 from modbus_connection import IllegalDataValueError
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest
@@ -21,7 +22,7 @@ from homeassistant.core import HomeAssistant, State
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
-from . import seed, setup_integration
+from . import seed, setup_integration, wait_for_write_refresh
 
 pytestmark = pytest.mark.parametrize("platforms", [[Platform.NUMBER]])
 
@@ -69,6 +70,7 @@ async def test_set_external_setpoint(
     hass: HomeAssistant,
     mock_unit: MockModbusUnit,
     init_integration: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     """Test the external setpoint shows and writes the comfort temperature."""
     await _enter_external_setpoint_mode(init_integration, mock_unit)
@@ -79,6 +81,7 @@ async def test_set_external_setpoint(
     await _set_value(hass, EXTERNAL_SETPOINT, 23.5)
 
     assert writes == [WriteEvent("holding", address(0x0004), [235], 0x06)]
+    await wait_for_write_refresh(hass, freezer)
     assert hass.states.get(EXTERNAL_SETPOINT).state == "23.5"
 
 

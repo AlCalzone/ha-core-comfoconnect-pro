@@ -1,17 +1,20 @@
 """Base entity for Zehnder ComfoConnect PRO gateways."""
 
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import override
 
 from comfoconnect_pro_modbus import InvalidValueError
 from modbus_connection import ModbusError
 
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity import EntityDescription
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, WRITE_SETTLE_TIME
 from .coordinator import ComfoConnectProDataUpdateCoordinator
 
 
@@ -28,6 +31,7 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
 
     _attr_has_entity_name = True
     entity_description: ComfoConnectProEntityDescription
+    _unsub_refresh: Callable[[], None] | None = None
 
     def __init__(
         self,
@@ -50,8 +54,33 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
             return False
         return self.entity_description.component not in self.coordinator.data.failed
 
+    @override
+    async def async_will_remove_from_hass(self) -> None:
+        """Cancel a pending refresh."""
+        await super().async_will_remove_from_hass()
+        if self._unsub_refresh is not None:
+            self._unsub_refresh()
+            self._unsub_refresh = None
+
+    @callback
+    def _async_schedule_refresh(self) -> None:
+        """Refresh once the unit shows the write.
+
+        A refresh right after a write reads the unit's state from before it.
+        """
+        if self._unsub_refresh is not None:
+            self._unsub_refresh()
+
+        async def _async_refresh(_now: datetime) -> None:
+            self._unsub_refresh = None
+            await self.coordinator.async_request_refresh()
+
+        self._unsub_refresh = async_call_later(
+            self.hass, WRITE_SETTLE_TIME, _async_refresh
+        )
+
     async def _async_write(self, write: Awaitable[None]) -> None:
-        """Send a write to the gateway, then refresh.
+        """Send a write to the gateway, then refresh once the unit shows it.
 
         The refresh runs after a failed write too, because part of a write
         sequence may have reached the gateway.
@@ -70,4 +99,4 @@ class ComfoConnectProEntity(CoordinatorEntity[ComfoConnectProDataUpdateCoordinat
                 translation_key="write_failed",
             ) from err
         finally:
-            await self.coordinator.async_request_refresh()
+            self._async_schedule_refresh()

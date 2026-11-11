@@ -1,6 +1,7 @@
 """Support for the Zehnder ComfoConnect PRO ventilation fan."""
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import override
 
 from comfoconnect_pro_modbus import VentilationPreset
@@ -13,12 +14,13 @@ from homeassistant.components.fan import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 from homeassistant.util.percentage import (
     ordered_list_item_to_percentage,
     percentage_to_ordered_list_item,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, WRITE_SETTLE_TIME
 from .coordinator import ComfoConnectProConfigEntry
 from .entity import ComfoConnectProEntity, ComfoConnectProEntityDescription
 
@@ -70,16 +72,19 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
     _attr_supported_features = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
     _attr_speed_count = len(SPEEDS)
     _attr_preset_modes = [PRESET_AUTO, PRESET_AWAY, PRESET_BOOST]
-    # The preset mode and percentage a write just set, shown until the next
-    # poll, since a refresh right after a write may wait for the coordinator's
-    # cooldown
+    # The preset mode and percentage a write just set. They show until the
+    # first poll after the unit had time to show the write, because a poll
+    # before that reads the unit's state from before it.
     _optimistic: tuple[str | None, int | None] | None = None
+    _optimistic_until: datetime | None = None
 
     @callback
     @override
     def _handle_coordinator_update(self) -> None:
-        """Show what the unit reports again."""
-        self._optimistic = None
+        """Show what the unit reports again, once it had time to show a write."""
+        if self._optimistic_until is None or dt_util.utcnow() >= self._optimistic_until:
+            self._optimistic = None
+            self._optimistic_until = None
         super()._handle_coordinator_update()
 
     @property
@@ -123,8 +128,9 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
     def _async_set_optimistic(
         self, preset_mode: str | None, percentage: int | None
     ) -> None:
-        """Show what a write set until the next poll."""
+        """Show what a write set until the unit had time to show it."""
         self._optimistic = (preset_mode, percentage)
+        self._optimistic_until = dt_util.utcnow() + timedelta(seconds=WRITE_SETTLE_TIME)
         self.async_write_ha_state()
 
     @override

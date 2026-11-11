@@ -29,7 +29,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
-from . import COIL, seed
+from . import COIL, seed, wait_for_write_refresh
 
 pytestmark = pytest.mark.parametrize("platforms", [[Platform.FAN]])
 
@@ -214,7 +214,7 @@ async def test_state_follows_the_unit(
 
 @pytest.mark.usefixtures("init_integration")
 async def test_half_applied_speed_change_refreshes(
-    hass: HomeAssistant, mock_unit: MockModbusUnit
+    hass: HomeAssistant, mock_unit: MockModbusUnit, freezer: FrozenDateTimeFactory
 ) -> None:
     """Test the state follows the unit when auto mode went off but the preset failed."""
     mock_unit.fail_write(address(0x0001), IllegalDataValueError())
@@ -226,7 +226,7 @@ async def test_half_applied_speed_change_refreshes(
             {ATTR_ENTITY_ID: FAN, ATTR_PERCENTAGE: 100},
             blocking=True,
         )
-    await hass.async_block_till_done()
+    await wait_for_write_refresh(hass, freezer)
 
     state = hass.states.get(FAN)
     assert state.attributes[ATTR_PRESET_MODE] is None
@@ -290,3 +290,33 @@ async def test_state_shows_a_write_until_the_next_poll(
     state = hass.states.get(FAN)
     assert state.attributes[ATTR_PRESET_MODE] == "auto"
     assert state.attributes[ATTR_PERCENTAGE] == 66
+
+
+@pytest.mark.parametrize("preset_mode", ["away", "boost"])
+async def test_state_ignores_polls_before_the_unit_shows_a_write(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    init_integration: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+    preset_mode: str,
+) -> None:
+    """Test a poll that reads the unit before it applied a write keeps the write.
+
+    The unit shows a change up to 2 seconds after the write is acknowledged.
+    """
+    await hass.services.async_call(
+        FAN_DOMAIN,
+        SERVICE_SET_PRESET_MODE,
+        {ATTR_ENTITY_ID: FAN, ATTR_PRESET_MODE: preset_mode},
+        blocking=True,
+    )
+
+    # The unit has not applied the write yet
+    seed(mock_unit, coil=COIL, holding={0x0001: 2})
+    await init_integration.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(FAN).attributes[ATTR_PRESET_MODE] == preset_mode
+
+    # The refresh the write scheduled reads the unit once it settled
+    await wait_for_write_refresh(hass, freezer)
+    assert hass.states.get(FAN).attributes[ATTR_PRESET_MODE] == "auto"

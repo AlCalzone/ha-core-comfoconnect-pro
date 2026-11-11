@@ -177,7 +177,7 @@ automation:
 
 ## Data updates
 
-The integration polls the gateway every 30 seconds. One poll makes five Modbus reads. A write is followed by an early poll, so the state updates right away.
+The integration polls the gateway every 30 seconds. One poll makes five Modbus reads. Home Assistant shows a change at once, and polls 3 seconds after it, once the unit has applied it.
 
 If one block of registers fails to read, only the entities from that block become unavailable. If the gateway loses its ventilation unit, all entities become unavailable until it finds the unit again.
 
