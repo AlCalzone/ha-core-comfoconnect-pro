@@ -101,8 +101,8 @@ class ComfoConnectProRuntimeData:
     # platform added entities for, once each reported a value.
     added_sensors: set[str] = field(default_factory=set)
     # The gateway reads back the time left on a boost, not its length, so the
-    # Boost duration number keeps the length here and the Boost switch writes
-    # it before each boost.
+    # Boost duration number keeps the length here, and the fan's boost preset
+    # writes it before each boost.
     boost_duration: int = DEFAULT_BOOST_DURATION
 
     @property

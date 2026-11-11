@@ -114,8 +114,8 @@ class ComfoConnectProBoostDurationNumber(ComfoConnectProEntity, RestoreNumber):
     """How long a boost started from Home Assistant lasts.
 
     The gateway reads back the time left on a boost, not its length, so the
-    number keeps the length itself, and the Boost switch writes it before each
-    boost.
+    number keeps the length itself, and the fan's boost preset writes it before
+    each boost.
     """
 
     entity_description: ComfoConnectProNumberDescription

@@ -14,10 +14,10 @@ docs/comfoconnect_pro.markdown               the page for home-assistant.io
 
 - A config flow with a menu for Modbus TCP (host, port, unit ID) or Modbus RTU (serial port, baud rate, parity, unit ID). It derives the stop bits from the parity, as the gateway does, and checks that the gateway reaches a ventilation unit before it creates the entry.
 - One coordinator that polls the status, the measurements and the settings every 30 seconds.
-- A fan with the four ventilation presets as speeds and the unit's auto mode as a preset.
+- A fan with the unit's low, medium and high levels as speeds, and auto mode, away and boost as presets. Away and boost run on top of auto mode or a speed.
 - Sensors for airflow, four temperatures, four humidities, the filter life, the comfort temperature, the boost time remaining and the five alarm slots. The room temperature and humidity sensors are added once a room sensor reports, and the CO₂ zone sensors once a zone reports a level.
 - Binary sensors for the error, filter, standby and ComfoHood flags.
-- Switches for boost, away and ComfoCool. ComfoCool is disabled by default. Selects for the temperature profile and its mode. Numbers for the external setpoint, available only in that mode, and the boost duration, which Home Assistant keeps and writes before each boost. A button that resets the alarms.
+- A ComfoCool switch, disabled by default. Selects for the temperature profile and its mode. Numbers for the external setpoint, available only in that mode, and the boost duration, which Home Assistant keeps and writes before each boost. A button that resets the alarms.
 - Diagnostics with the raw register dump. The host and serial port are redacted.
 
 It takes its Modbus unit from core's `modbus` integration with `async_get_unit`, so it shares the connection with any other integration that talks to the same gateway or serial port.

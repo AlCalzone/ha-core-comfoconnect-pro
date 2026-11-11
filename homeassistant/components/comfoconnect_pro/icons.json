@@ -22,7 +22,9 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "mdi:fan-auto"
+              "auto": "mdi:fan-auto",
+              "away": "mdi:home-export-outline",
+              "boost": "mdi:fan-plus"
             }
           }
         }
@@ -53,12 +55,6 @@
       }
     },
     "switch": {
-      "away": {
-        "default": "mdi:home-export-outline"
-      },
-      "boost": {
-        "default": "mdi:fan-plus"
-      },
       "comfocool": {
         "default": "mdi:snowflake"
       }

@@ -106,7 +106,9 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "Auto"
+              "auto": "Auto",
+              "away": "Away",
+              "boost": "Boost"
             }
           }
         }
@@ -256,12 +258,6 @@
       }
     },
     "switch": {
-      "away": {
-        "name": "Away"
-      },
-      "boost": {
-        "name": "Boost"
-      },
       "comfocool": {
         "name": "ComfoCool"
       }

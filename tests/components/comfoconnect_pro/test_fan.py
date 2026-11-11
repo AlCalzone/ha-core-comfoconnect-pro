@@ -48,7 +48,7 @@ async def test_fan(
 async def test_set_percentage_leaves_auto_mode(
     hass: HomeAssistant, mock_unit: MockModbusUnit
 ) -> None:
-    """Test a speed turns auto mode off, then writes its preset."""
+    """Test a speed ends boost, away and auto mode, then writes its preset."""
     writes: list[WriteEvent] = []
     mock_unit.on_write(writes.append)
 
@@ -60,6 +60,8 @@ async def test_set_percentage_leaves_auto_mode(
     )
 
     assert writes == [
+        WriteEvent("coil", address(0x0007), [False], 0x05),
+        WriteEvent("coil", address(0x0008), [False], 0x05),
         WriteEvent("coil", address(0x0006), [False], 0x05),
         WriteEvent("holding", address(0x0001), [3], 0x06),
     ]
@@ -84,15 +86,17 @@ async def test_set_percentage_with_stale_auto_mode(
     await hass.services.async_call(
         FAN_DOMAIN,
         SERVICE_SET_PERCENTAGE,
-        {ATTR_ENTITY_ID: FAN, ATTR_PERCENTAGE: 25},
+        {ATTR_ENTITY_ID: FAN, ATTR_PERCENTAGE: 33},
         blocking=True,
     )
 
     assert writes == [
+        WriteEvent("coil", address(0x0007), [False], 0x05),
+        WriteEvent("coil", address(0x0008), [False], 0x05),
         WriteEvent("coil", address(0x0006), [False], 0x05),
-        WriteEvent("holding", address(0x0001), [0], 0x06),
+        WriteEvent("holding", address(0x0001), [1], 0x06),
     ]
-    assert hass.states.get(FAN).attributes[ATTR_PERCENTAGE] == 25
+    assert hass.states.get(FAN).attributes[ATTR_PERCENTAGE] == 33
 
 
 @pytest.mark.usefixtures("init_integration")
@@ -115,20 +119,90 @@ async def test_set_percentage_zero_is_refused(
     assert writes == []
 
 
-@pytest.mark.usefixtures("init_integration")
-async def test_set_preset_auto(hass: HomeAssistant, mock_unit: MockModbusUnit) -> None:
-    """Test the auto preset turns auto mode on."""
+@pytest.mark.parametrize(
+    ("preset_mode", "expected"),
+    [
+        pytest.param(
+            "auto",
+            [
+                WriteEvent("coil", address(0x0007), [False], 0x05),
+                WriteEvent("coil", address(0x0008), [False], 0x05),
+                WriteEvent("coil", address(0x0006), [True], 0x05),
+            ],
+            id="auto",
+        ),
+        pytest.param(
+            "away",
+            [
+                WriteEvent("coil", address(0x0007), [False], 0x05),
+                WriteEvent("coil", address(0x0008), [True], 0x05),
+            ],
+            id="away",
+        ),
+        pytest.param(
+            "boost",
+            [
+                WriteEvent("coil", address(0x0008), [False], 0x05),
+                WriteEvent("holding", address(0x0005), [600], 0x06),
+                WriteEvent("coil", address(0x0007), [True], 0x05),
+            ],
+            id="boost",
+        ),
+    ],
+)
+async def test_set_preset_mode(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    init_integration: MockConfigEntry,
+    preset_mode: str,
+    expected: list[WriteEvent],
+) -> None:
+    """Test each preset ends the others, leaving auto mode to auto alone.
+
+    The boost writes its duration first, because the gateway keeps none.
+    """
+    init_integration.runtime_data.boost_duration = 600
     writes: list[WriteEvent] = []
     mock_unit.on_write(writes.append)
 
     await hass.services.async_call(
         FAN_DOMAIN,
         SERVICE_SET_PRESET_MODE,
-        {ATTR_ENTITY_ID: FAN, ATTR_PRESET_MODE: "auto"},
+        {ATTR_ENTITY_ID: FAN, ATTR_PRESET_MODE: preset_mode},
         blocking=True,
     )
 
-    assert writes == [WriteEvent("coil", address(0x0006), [True], 0x05)]
+    assert writes == expected
+
+
+@pytest.mark.usefixtures("init_integration")
+@pytest.mark.parametrize(
+    ("coil", "preset", "preset_mode", "percentage"),
+    [
+        pytest.param({0x0007: True}, 3, "boost", 100, id="boost"),
+        pytest.param({0x0008: True}, 0, "away", None, id="away"),
+        pytest.param({0x0006: True}, 2, "auto", 66, id="auto"),
+        pytest.param({0x0006: False}, 1, None, 33, id="manual"),
+    ],
+)
+async def test_state_follows_the_unit(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    freezer: FrozenDateTimeFactory,
+    coil: dict[int, bool],
+    preset: int,
+    preset_mode: str | None,
+    percentage: int | None,
+) -> None:
+    """Test boost and away show over auto mode, which stays on beneath them."""
+    seed(mock_unit, coil={**COIL, **coil}, holding={0x0001: preset})
+    freezer.tick(timedelta(seconds=SCAN_INTERVAL))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(FAN)
+    assert state.attributes[ATTR_PRESET_MODE] == preset_mode
+    assert state.attributes[ATTR_PERCENTAGE] == percentage
 
 
 @pytest.mark.usefixtures("init_integration")
@@ -149,4 +223,4 @@ async def test_half_applied_speed_change_refreshes(
 
     state = hass.states.get(FAN)
     assert state.attributes[ATTR_PRESET_MODE] is None
-    assert state.attributes[ATTR_PERCENTAGE] == 75
+    assert state.attributes[ATTR_PERCENTAGE] == 66

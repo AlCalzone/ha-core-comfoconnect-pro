@@ -31,7 +31,7 @@ It reads the airflow, the temperature and humidity of each air stream, the CO₂
 
 ## Use cases
 
-- Boosting the ventilation while you shower or cook. An automation turns on **Boost** when a bathroom humidity sensor rises.
+- Boosting the ventilation while you shower or cook. An automation picks the fan's **Boost** preset when a bathroom humidity sensor rises.
 - Lowering the ventilation while nobody is home. Turn on **Away** when the last person leaves.
 - Following CO₂ in each room. Each CO₂ zone wired to the unit becomes a sensor.
 - Knowing when to change the filters. **Filter days remaining** counts down, and the **Filter** sensor turns on when the filters are due.
@@ -98,7 +98,13 @@ All entities belong to one device, named after the config entry.
 
 ### Fan
 
-The fan sets the ventilation speed. Its four speeds are the unit's presets: away (25 %), low (50 %), medium (75 %) and high (100 %). The **Auto** preset hands the speed to the unit's own control. Choosing a speed turns auto mode off until you choose **Auto** again. A speed chosen in Zehnder's app instead overrides auto mode for 2 hours.
+The fan sets the ventilation speed. Its three speeds are the unit's levels: low (33 %), medium (66 %) and high (100 %). Its presets:
+
+- **Auto** hands the speed to the unit's own control.
+- **Away** turns on the unit's away function, which ventilates at the lowest level. The fan shows no speed meanwhile.
+- **Boost** runs the fans at high speed for the **Boost duration**. Zehnder's app calls it the party timer.
+
+Away and boost run on top of auto mode or the chosen speed, and the unit returns to it when they end. Choosing a speed ends away or a boost and turns auto mode off until you choose **Auto** again. A speed chosen in Zehnder's app instead overrides auto mode for 2 hours.
 
 The unit always ventilates, so the fan cannot be turned off.
 
@@ -123,8 +129,6 @@ The unit always ventilates, so the fan cannot be turned off.
 
 ### Switches
 
-- **Boost**: runs the fans at boost speed for the **Boost duration**. Zehnder's app calls it the party timer.
-- **Away**: the unit's away function.
 - **ComfoCool**: allows the ComfoCool unit to cool. It is disabled by default, because the gateway does not tell whether a ComfoCool is fitted. Enable it if you have one.
 
 ### Configuration
@@ -147,9 +151,11 @@ automation:
         entity_id: sensor.bathroom_humidity
         above: 75
     actions:
-      - action: switch.turn_on
+      - action: fan.set_preset_mode
         target:
-          entity_id: switch.comfoair_boost
+          entity_id: fan.comfoair
+        data:
+          preset_mode: boost
 ```
 
 ### Away mode while nobody is home
@@ -162,9 +168,11 @@ automation:
         entity_id: zone.home
         to: "0"
     actions:
-      - action: switch.turn_on
+      - action: fan.set_preset_mode
         target:
-          entity_id: switch.comfoair_away
+          entity_id: fan.comfoair
+        data:
+          preset_mode: away
 ```
 
 ## Data updates
