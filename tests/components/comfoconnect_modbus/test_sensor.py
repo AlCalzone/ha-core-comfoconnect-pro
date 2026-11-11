@@ -12,7 +12,7 @@ from pytest_homeassistant.common import (
 )
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.comfoconnect_pro.const import SCAN_INTERVAL
+from homeassistant.components.comfoconnect_modbus.const import SCAN_INTERVAL
 from homeassistant.const import STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er

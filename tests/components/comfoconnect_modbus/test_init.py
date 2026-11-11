@@ -18,7 +18,7 @@ import pytest
 from pytest_homeassistant.common import MockConfigEntry, async_fire_time_changed
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.comfoconnect_pro.const import DOMAIN, SCAN_INTERVAL
+from homeassistant.components.comfoconnect_modbus.const import DOMAIN, SCAN_INTERVAL
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE, Platform
 from homeassistant.core import HomeAssistant
@@ -210,7 +210,7 @@ async def test_setup_fails_when_the_link_is_held_with_other_settings(
     """Test a link another entry holds with other settings fails setup for good."""
     mock_config_entry.add_to_hass(hass)
     with patch(
-        "homeassistant.components.comfoconnect_pro.async_get_unit",
+        "homeassistant.components.comfoconnect_modbus.async_get_unit",
         side_effect=HomeAssistantError("in use with other settings"),
     ):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)

@@ -7,10 +7,10 @@ from modbus_connection.mock import MockModbusConnection
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
-from homeassistant.components.comfoconnect_pro.config_flow import (
+from homeassistant.components.comfoconnect_modbus.config_flow import (
     STEP_RECONFIGURE_SERIAL,
 )
-from homeassistant.components.comfoconnect_pro.const import (
+from homeassistant.components.comfoconnect_modbus.const import (
     CONF_BAUDRATE,
     CONF_UNIT_ID,
     DOMAIN,

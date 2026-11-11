@@ -10,7 +10,7 @@ ha_release: 2026.11
 ha_iot_class: Local Polling
 ha_codeowners:
   - '@AlCalzone'
-ha_domain: comfoconnect_pro
+ha_domain: comfoconnect_modbus
 ha_platforms:
   - binary_sensor
   - button

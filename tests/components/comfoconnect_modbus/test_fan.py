@@ -16,7 +16,7 @@ from pytest_homeassistant.common import (
 )
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.comfoconnect_pro.const import SCAN_INTERVAL
+from homeassistant.components.comfoconnect_modbus.const import SCAN_INTERVAL
 from homeassistant.components.fan import (
     ATTR_PERCENTAGE,
     ATTR_PRESET_MODE,

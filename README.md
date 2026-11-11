@@ -1,13 +1,13 @@
 # Zehnder ComfoConnect PRO integration for Home Assistant core
 
-The `comfoconnect_pro` integration for [Home Assistant core](https://github.com/home-assistant/core), staged here until it is submitted. It connects a Zehnder ComfoAir Q or Flex ventilation unit through the ComfoConnect PRO gateway, over Modbus TCP or Modbus RTU, using the device library [comfoconnect-pro-modbus](https://github.com/AlCalzone/comfoconnect-pro-modbus).
+The `comfoconnect_modbus` integration for [Home Assistant core](https://github.com/home-assistant/core), staged here until it is submitted. It connects a Zehnder ComfoAir Q or Flex ventilation unit through the ComfoConnect PRO gateway, over Modbus TCP or Modbus RTU, using the device library [comfoconnect-pro-modbus](https://github.com/AlCalzone/comfoconnect-pro-modbus).
 
 The layout mirrors core's, so the files copy straight across:
 
 ```text
-homeassistant/components/comfoconnect_pro/   the integration
-tests/components/comfoconnect_pro/           its tests and snapshots
-docs/comfoconnect_pro.markdown               the page for home-assistant.io
+homeassistant/components/comfoconnect_modbus/   the integration
+tests/components/comfoconnect_modbus/           its tests and snapshots
+docs/comfoconnect_modbus.markdown               the page for home-assistant.io
 ```
 
 ## What it does
@@ -41,7 +41,7 @@ uv pip install --python ../core/.venv/bin/python "comfoconnect-pro-modbus @ git+
 Then run the tests from the core checkout:
 
 ```bash
-.venv/bin/python -m pytest tests/components/comfoconnect_pro
+.venv/bin/python -m pytest tests/components/comfoconnect_modbus
 ```
 
 CI does the same against core's `dev` branch on every push and once a week.
@@ -50,5 +50,5 @@ CI does the same against core's `dev` branch on every push and once a week.
 
 - Publish `comfoconnect-pro-modbus` 0.1.0 to PyPI. The manifest pins it.
 - Add the brand to [home-assistant/brands](https://github.com/home-assistant/brands). Core's `comfoconnect` integration is Zehnder too, so a `zehnder` brand that groups both fits. Until then hassfest fails the `brands` rule of the Bronze tier, which every new integration has to reach.
-- Open the documentation pull request on home-assistant.io with `docs/comfoconnect_pro.markdown`.
+- Open the documentation pull request on home-assistant.io with `docs/comfoconnect_modbus.markdown`.
 - Test the rest against a real gateway. Tested on a ComfoConnect PRO with firmware 1.0.5 and a ComfoAir Q: every read, and every write except ComfoCool. That unit has no room sensor, CO₂ sensors or ComfoCool, so the room sensors, the CO₂ zones and the ComfoCool switch rest on the manual and on the room registers reading 0 without a sensor.

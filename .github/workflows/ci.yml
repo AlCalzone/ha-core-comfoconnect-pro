@@ -47,8 +47,8 @@ jobs:
       - name: Run the tests
         working-directory: core
         run: >
-          .venv/bin/python -m pytest tests/components/comfoconnect_pro
-          --cov=homeassistant.components.comfoconnect_pro --cov-report=term-missing
+          .venv/bin/python -m pytest tests/components/comfoconnect_modbus
+          --cov=homeassistant.components.comfoconnect_modbus --cov-report=term-missing
           --cov-fail-under=95
       - name: Mypy
         working-directory: core
@@ -56,17 +56,17 @@ jobs:
         # silence the modules mypy follows, whose requirements are missing.
         run: |
           PATH="$PWD/.venv/bin:$PATH" .venv/bin/python -m script.hassfest -p mypy_config
-          .venv/bin/mypy --follow-imports=silent homeassistant/components/comfoconnect_pro
+          .venv/bin/mypy --follow-imports=silent homeassistant/components/comfoconnect_modbus
       - name: Hassfest
         working-directory: core
         # Skip quality_scale until the brands entry exists, because it fails
         # the brands rule
         run: >
           PATH="$PWD/.venv/bin:$PATH" .venv/bin/python -m script.hassfest
-          --integration-path homeassistant/components/comfoconnect_pro
+          --integration-path homeassistant/components/comfoconnect_modbus
           --skip-plugins quality_scale
       - name: Ruff
         working-directory: core
         run: |
-          .venv/bin/ruff check homeassistant/components/comfoconnect_pro tests/components/comfoconnect_pro
-          .venv/bin/ruff format --check homeassistant/components/comfoconnect_pro tests/components/comfoconnect_pro
+          .venv/bin/ruff check homeassistant/components/comfoconnect_modbus tests/components/comfoconnect_modbus
+          .venv/bin/ruff format --check homeassistant/components/comfoconnect_modbus tests/components/comfoconnect_modbus

@@ -16,11 +16,11 @@ import pytest
 from pytest_homeassistant.common import MockConfigEntry, get_schema_suggested_value
 
 from homeassistant import config_entries
-from homeassistant.components.comfoconnect_pro.config_flow import (
+from homeassistant.components.comfoconnect_modbus.config_flow import (
     STEP_RECONFIGURE_SERIAL,
     STEP_RECONFIGURE_TCP,
 )
-from homeassistant.components.comfoconnect_pro.const import (
+from homeassistant.components.comfoconnect_modbus.const import (
     CONF_BAUDRATE,
     CONF_PARITY,
     CONF_UNIT_ID,
@@ -58,7 +58,7 @@ def _patch_temporary_unit(connection: MockModbusConnection) -> _patch[AsyncMock]
         yield connection.for_unit(unit_id)
 
     return patch(
-        "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+        "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
         side_effect=_get_temporary_unit,
     )
 
@@ -168,7 +168,7 @@ async def test_user_step_cannot_connect(
     flow_id = await _start_flow(hass, TYPE_TCP)
 
     with patch(
-        "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+        "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
         return_value=_RaisingTemporaryUnit(error),
     ):
         result = await hass.config_entries.flow.async_configure(flow_id, MOCK_TCP_INPUT)
@@ -440,7 +440,7 @@ async def test_reconfigure_cannot_connect(
 
     result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_TCP)
     with patch(
-        "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+        "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
         return_value=_RaisingTemporaryUnit(ModbusTimeoutError("timed out")),
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -482,7 +482,7 @@ async def test_reconfigure_new_line_settings(
 
     result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_SERIAL)
     with patch(
-        "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+        "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
         side_effect=_probe_watching_the_entry,
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -508,7 +508,7 @@ async def test_reconfigure_new_line_settings_failing(
 
     result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_SERIAL)
     with patch(
-        "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+        "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
         return_value=_RaisingTemporaryUnit(ModbusTimeoutError("timed out")),
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -581,7 +581,7 @@ async def test_reconfigure_unexpected_probe_error_sets_the_entry_back_up(
     result = await _start_reconfigure(hass, entry, STEP_RECONFIGURE_SERIAL)
     with (
         patch(
-            "homeassistant.components.comfoconnect_pro.config_flow.async_get_temporary_unit",
+            "homeassistant.components.comfoconnect_modbus.config_flow.async_get_temporary_unit",
             return_value=_RaisingTemporaryUnit(RuntimeError("boom")),
         ),
         pytest.raises(RuntimeError),
