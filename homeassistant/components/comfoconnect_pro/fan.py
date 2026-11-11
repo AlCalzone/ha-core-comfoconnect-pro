@@ -10,7 +10,7 @@ from homeassistant.components.fan import (
     FanEntityDescription,
     FanEntityFeature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util.percentage import (
@@ -70,26 +70,53 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
     _attr_supported_features = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
     _attr_speed_count = len(SPEEDS)
     _attr_preset_modes = [PRESET_AUTO, PRESET_AWAY, PRESET_BOOST]
+    # The preset mode and percentage a write just set, shown until the next
+    # poll, since a refresh right after a write may wait for the coordinator's
+    # cooldown
+    _optimistic: tuple[str | None, int | None] | None = None
+
+    @callback
+    @override
+    def _handle_coordinator_update(self) -> None:
+        """Show what the unit reports again."""
+        self._optimistic = None
+        super()._handle_coordinator_update()
 
     @property
     @override
     def percentage(self) -> int | None:
         """Return the speed in effect, as a percentage, or None while away."""
-        preset = self.coordinator.device.controls.ventilation_preset
-        if preset not in SPEEDS:
-            return None
-        return ordered_list_item_to_percentage(SPEEDS, preset)
+        if self._optimistic is not None:
+            return self._optimistic[1]
+        return self._reported_percentage()
 
     @property
     @override
     def preset_mode(self) -> str | None:
         """Return boost or away while one runs, else auto while the unit picks."""
+        if self._optimistic is not None:
+            return self._optimistic[0]
         controls = self.coordinator.device.controls
         if controls.boost:
             return PRESET_BOOST
         if controls.away_function:
             return PRESET_AWAY
         return PRESET_AUTO if controls.auto_mode else None
+
+    def _reported_percentage(self) -> int | None:
+        """Return the speed of the preset the unit last reported."""
+        preset = self.coordinator.device.controls.ventilation_preset
+        if preset not in SPEEDS:
+            return None
+        return ordered_list_item_to_percentage(SPEEDS, preset)
+
+    @callback
+    def _async_set_optimistic(
+        self, preset_mode: str | None, percentage: int | None
+    ) -> None:
+        """Show what a write set until the next poll."""
+        self._optimistic = (preset_mode, percentage)
+        self.async_write_ha_state()
 
     @override
     async def async_set_percentage(self, percentage: int) -> None:
@@ -109,6 +136,9 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
             await controls.async_write_away_function(False)
             await controls.async_write_auto_mode(False)
             await controls.async_write_ventilation_preset(preset)
+            self._async_set_optimistic(
+                None, ordered_list_item_to_percentage(SPEEDS, preset)
+            )
 
         await self._async_write(_set_speed())
 
@@ -126,12 +156,22 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
                 # write the chosen one before each boost.
                 await controls.async_write_boost_time(runtime_data.boost_duration)
                 await controls.async_write_boost(True)
+                # A boost runs the fans at the high speed
+                self._async_set_optimistic(PRESET_BOOST, 100)
                 return
             await controls.async_write_boost(False)
             if preset_mode == PRESET_AWAY:
                 await controls.async_write_away_function(True)
+                # Away has no speed of its own
+                self._async_set_optimistic(PRESET_AWAY, None)
                 return
             await controls.async_write_away_function(False)
             await controls.async_write_auto_mode(True)
+            # Auto mode picks its own speed, which the next poll shows. The
+            # one reported during a boost or away is not it.
+            ending_mode = controls.boost or controls.away_function
+            self._async_set_optimistic(
+                PRESET_AUTO, None if ending_mode else self._reported_percentage()
+            )
 
         await self._async_write(_set_preset())

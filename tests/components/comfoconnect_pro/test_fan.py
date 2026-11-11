@@ -1,6 +1,8 @@
 """Tests for the Zehnder ComfoConnect PRO fan platform."""
 
 from datetime import timedelta
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
 from comfoconnect_pro_modbus.model import address
 from freezegun.api import FrozenDateTimeFactory
@@ -223,4 +225,63 @@ async def test_half_applied_speed_change_refreshes(
 
     state = hass.states.get(FAN)
     assert state.attributes[ATTR_PRESET_MODE] is None
+    assert state.attributes[ATTR_PERCENTAGE] == 66
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "preset_mode", "percentage"),
+    [
+        pytest.param(
+            SERVICE_SET_PERCENTAGE, {ATTR_PERCENTAGE: 33}, None, 33, id="speed"
+        ),
+        pytest.param(
+            SERVICE_SET_PRESET_MODE,
+            {ATTR_PRESET_MODE: "boost"},
+            "boost",
+            100,
+            id="boost",
+        ),
+        pytest.param(
+            SERVICE_SET_PRESET_MODE, {ATTR_PRESET_MODE: "away"}, "away", None, id="away"
+        ),
+        pytest.param(
+            SERVICE_SET_PRESET_MODE, {ATTR_PRESET_MODE: "auto"}, "auto", 66, id="auto"
+        ),
+    ],
+)
+async def test_state_shows_a_write_until_the_next_poll(
+    hass: HomeAssistant,
+    mock_unit: MockModbusUnit,
+    init_integration: MockConfigEntry,
+    freezer: FrozenDateTimeFactory,
+    service: str,
+    data: dict[str, Any],
+    preset_mode: str | None,
+    percentage: int | None,
+) -> None:
+    """Test the fan shows a write at once, then what the next poll reports.
+
+    The refresh a write requests may wait for the coordinator's cooldown.
+    """
+    with patch.object(
+        init_integration.runtime_data.coordinator,
+        "async_request_refresh",
+        AsyncMock(),
+    ):
+        await hass.services.async_call(
+            FAN_DOMAIN, service, {ATTR_ENTITY_ID: FAN, **data}, blocking=True
+        )
+
+    state = hass.states.get(FAN)
+    assert state.attributes[ATTR_PRESET_MODE] == preset_mode
+    assert state.attributes[ATTR_PERCENTAGE] == percentage
+
+    # Someone switches the unit back to auto mode before the next poll
+    seed(mock_unit, coil=COIL, holding={0x0001: 2})
+    freezer.tick(timedelta(seconds=SCAN_INTERVAL))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(FAN)
+    assert state.attributes[ATTR_PRESET_MODE] == "auto"
     assert state.attributes[ATTR_PERCENTAGE] == 66
