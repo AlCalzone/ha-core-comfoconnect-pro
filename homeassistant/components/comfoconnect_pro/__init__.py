@@ -28,7 +28,7 @@ PLATFORMS: list[Platform] = [
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ComfoConnectProConfigEntry
-) -> bool:
+) -> None:
     """Set up a ComfoConnect PRO from a config entry."""
     try:
         unit = async_get_unit(
@@ -48,11 +48,10 @@ async def async_setup_entry(
     entry.runtime_data = ComfoConnectProRuntimeData(coordinator)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
 
 
 async def async_unload_entry(
     hass: HomeAssistant, entry: ComfoConnectProConfigEntry
-) -> bool:
+) -> None:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)

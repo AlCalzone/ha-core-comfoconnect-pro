@@ -23,7 +23,7 @@ rules:
     comment: This integration does not provide any triggers.
   entity-event-setup:
     status: exempt
-    comment: Entities subscribe to nothing themselves. The one coordinator listener, which adds CO₂ zone sensors, is removed through entry.async_on_unload.
+    comment: Entities subscribe to nothing themselves. The one coordinator listener, which adds the room and CO₂ zone sensors once they report, is removed through entry.async_on_unload.
   entity-unique-id: done
   has-entity-name: done
   runtime-data: done

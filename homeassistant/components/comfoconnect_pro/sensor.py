@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import override
 
-from comfoconnect_pro_modbus import ALARM_SLOTS, AlarmCode, ComfoConnectPro
+from comfoconnect_pro_modbus import ALARM_SLOTS, CO2_ZONES, AlarmCode, ComfoConnectPro
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -31,7 +31,8 @@ PARALLEL_UPDATES = 0
 
 NO_ALARM = "none"
 ALARM_OPTIONS = [NO_ALARM, *(code.name.lower() for code in AlarmCode)]
-AIR_STREAMS = ("room", "extract", "exhaust", "outdoor", "supply")
+# The room sensor is optional, so its two sensors are added separately.
+AIR_STREAMS = ("extract", "exhaust", "outdoor", "supply")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -51,6 +52,33 @@ def _attribute(component: str, name: str) -> Callable[[ComfoConnectPro], StateTy
         return value
 
     return _value
+
+
+def _temperature(stream: str) -> ComfoConnectProSensorDescription:
+    """The temperature sensor of air stream ``stream``."""
+    return ComfoConnectProSensorDescription(
+        key=f"{stream}_temperature",
+        translation_key=f"{stream}_temperature",
+        component="sensors",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_attribute("sensors", f"{stream}_temperature"),
+    )
+
+
+def _humidity(stream: str) -> ComfoConnectProSensorDescription:
+    """The humidity sensor of air stream ``stream``."""
+    return ComfoConnectProSensorDescription(
+        key=f"{stream}_humidity",
+        translation_key=f"{stream}_humidity",
+        component="sensors",
+        device_class=SensorDeviceClass.HUMIDITY,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_attribute("sensors", f"{stream}_humidity"),
+    )
 
 
 def _alarm(slot: int) -> Callable[[ComfoConnectPro], StateType]:
@@ -78,31 +106,8 @@ SENSOR_DESCRIPTIONS: tuple[ComfoConnectProSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_attribute("sensors", "airflow"),
     ),
-    *(
-        ComfoConnectProSensorDescription(
-            key=f"{stream}_temperature",
-            translation_key=f"{stream}_temperature",
-            component="sensors",
-            device_class=SensorDeviceClass.TEMPERATURE,
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            state_class=SensorStateClass.MEASUREMENT,
-            suggested_display_precision=1,
-            value_fn=_attribute("sensors", f"{stream}_temperature"),
-        )
-        for stream in AIR_STREAMS
-    ),
-    *(
-        ComfoConnectProSensorDescription(
-            key=f"{stream}_humidity",
-            translation_key=f"{stream}_humidity",
-            component="sensors",
-            device_class=SensorDeviceClass.HUMIDITY,
-            native_unit_of_measurement=PERCENTAGE,
-            state_class=SensorStateClass.MEASUREMENT,
-            value_fn=_attribute("sensors", f"{stream}_humidity"),
-        )
-        for stream in AIR_STREAMS
-    ),
+    *(_temperature(stream) for stream in AIR_STREAMS),
+    *(_humidity(stream) for stream in AIR_STREAMS),
     ComfoConnectProSensorDescription(
         key="filter_days_remaining",
         translation_key="filter_days_remaining",
@@ -111,6 +116,26 @@ SENSOR_DESCRIPTIONS: tuple[ComfoConnectProSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.DAYS,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_attribute("sensors", "filter_days_remaining"),
+    ),
+    ComfoConnectProSensorDescription(
+        key="comfort_temperature",
+        translation_key="comfort_temperature",
+        component="controls",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=_attribute("controls", "comfort_temperature"),
+    ),
+    ComfoConnectProSensorDescription(
+        key="boost_remaining",
+        translation_key="boost_remaining",
+        component="controls",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_display_precision=0,
+        value_fn=_attribute("controls", "boost_remaining"),
     ),
     *(
         ComfoConnectProSensorDescription(
@@ -144,6 +169,15 @@ def co2_sensor(zone: int) -> ComfoConnectProSensorDescription:
     )
 
 
+# Sensors added the first time they report a value: the room sensor's two,
+# which read nothing without a room sensor, and each CO₂ zone's.
+OPTIONAL_SENSOR_DESCRIPTIONS: tuple[ComfoConnectProSensorDescription, ...] = (
+    _temperature("room"),
+    _humidity("room"),
+    *(co2_sensor(zone) for zone in range(1, CO2_ZONES + 1)),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ComfoConnectProConfigEntry,
@@ -158,18 +192,23 @@ async def async_setup_entry(
     )
 
     @callback
-    def _async_add_co2_zones() -> None:
-        """Add a CO₂ zone's sensor the first time the zone reports a level."""
-        new = set(runtime_data.device.sensors.co2_zones) - runtime_data.wired_co2_zones
+    def _async_add_optional_sensors() -> None:
+        """Add an optional sensor the first time it reports a value."""
+        new = [
+            description
+            for description in OPTIONAL_SENSOR_DESCRIPTIONS
+            if description.key not in runtime_data.added_sensors
+            and description.value_fn(runtime_data.device) is not None
+        ]
         if not new:
             return
-        runtime_data.wired_co2_zones.update(new)
+        runtime_data.added_sensors.update(description.key for description in new)
         async_add_entities(
-            ComfoConnectProSensor(coordinator, co2_sensor(zone)) for zone in sorted(new)
+            ComfoConnectProSensor(coordinator, description) for description in new
         )
 
-    _async_add_co2_zones()
-    entry.async_on_unload(coordinator.async_add_listener(_async_add_co2_zones))
+    _async_add_optional_sensors()
+    entry.async_on_unload(coordinator.async_add_listener(_async_add_optional_sensors))
 
 
 class ComfoConnectProSensor(ComfoConnectProEntity, SensorEntity):

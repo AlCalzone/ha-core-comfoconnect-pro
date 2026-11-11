@@ -12,6 +12,8 @@ DEFAULT_PARITY = "even"
 DEFAULT_PORT = 502
 DEFAULT_UNIT_ID = 1
 SCAN_INTERVAL = 30
+# The boost length until the user picks one, in seconds
+DEFAULT_BOOST_DURATION = 1800
 
 # `BAUDRATES` lists what the gateway's Protocols and services page offers.
 BAUDRATES = (

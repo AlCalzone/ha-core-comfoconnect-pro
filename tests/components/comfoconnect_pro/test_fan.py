@@ -7,6 +7,11 @@ from freezegun.api import FrozenDateTimeFactory
 from modbus_connection import IllegalDataValueError
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest
+from pytest_homeassistant.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+    snapshot_platform,
+)
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.comfoconnect_pro.const import SCAN_INTERVAL
@@ -23,8 +28,6 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from . import COIL, seed
-
-from tests.common import MockConfigEntry, async_fire_time_changed, snapshot_platform
 
 pytestmark = pytest.mark.parametrize("platforms", [[Platform.FAN]])
 

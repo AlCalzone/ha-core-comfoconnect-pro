@@ -1,6 +1,7 @@
 {
   "domain": "comfoconnect_pro",
   "name": "Zehnder ComfoConnect PRO",
+  "categories": ["climate.fans_ventilation"],
   "codeowners": ["@AlCalzone"],
   "config_flow": true,
   "dependencies": ["modbus", "usb"],

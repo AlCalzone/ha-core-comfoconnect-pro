@@ -15,6 +15,7 @@ from modbus_connection import (
 )
 from modbus_connection.mock import MockModbusUnit
 import pytest
+from pytest_homeassistant.common import MockConfigEntry, async_fire_time_changed
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.comfoconnect_pro.const import DOMAIN, SCAN_INTERVAL
@@ -26,8 +27,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from . import INPUT, MOCK_SERIAL_ENTRY_DATA, seed
-
-from tests.common import MockConfigEntry, async_fire_time_changed
 
 _SCAN = timedelta(seconds=SCAN_INTERVAL)
 AIRFLOW = "sensor.comfoair_airflow"
