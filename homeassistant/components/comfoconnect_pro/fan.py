@@ -77,15 +77,34 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
     # before that reads the unit's state from before it.
     _optimistic: tuple[str | None, int | None] | None = None
     _optimistic_until: datetime | None = None
+    # The speed the unit last reported outside a boost or away, which it
+    # returns to when they end
+    _speed_before_mode: int | None = None
+
+    @override
+    async def async_added_to_hass(self) -> None:
+        """Remember the speed the unit reports at startup."""
+        await super().async_added_to_hass()
+        self._remember_speed()
 
     @callback
     @override
     def _handle_coordinator_update(self) -> None:
         """Show what the unit reports again, once it had time to show a write."""
+        self._remember_speed()
         if self._optimistic_until is None or dt_util.utcnow() >= self._optimistic_until:
             self._optimistic = None
             self._optimistic_until = None
         super()._handle_coordinator_update()
+
+    @callback
+    def _remember_speed(self) -> None:
+        """Remember the speed the unit reports while no boost or away runs."""
+        controls = self.coordinator.device.controls
+        if controls.boost or controls.away_function:
+            return
+        if (percentage := self._reported_percentage()) is not None:
+            self._speed_before_mode = percentage
 
     @property
     @override
@@ -182,11 +201,13 @@ class ComfoConnectProFan(ComfoConnectProEntity, FanEntity):
                 return
             await controls.async_write_away_function(False)
             await controls.async_write_auto_mode(True)
-            # Auto mode picks its own speed, which the next poll shows. The
-            # one reported during a boost or away is not it.
+            # Auto mode picks its own speed, which the next poll shows. Until
+            # then, show the speed from before a boost or away, since the
+            # one reported during them is not it.
             ending_mode = controls.boost or controls.away_function
             self._async_set_optimistic(
-                PRESET_AUTO, None if ending_mode else self._reported_percentage()
+                PRESET_AUTO,
+                self._speed_before_mode if ending_mode else self._reported_percentage(),
             )
 
         await self._async_write(_set_preset())
