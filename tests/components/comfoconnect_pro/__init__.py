@@ -1,7 +1,12 @@
 """Tests for the Zehnder ComfoConnect PRO integration."""
 
+from datetime import timedelta
+from unittest.mock import patch
+
 from comfoconnect_pro_modbus.model import address
+from freezegun.api import FrozenDateTimeFactory
 from modbus_connection.mock import MockModbusUnit
+from pytest_homeassistant.common import MockConfigEntry, async_fire_time_changed
 
 from homeassistant.components.comfoconnect_pro.const import (
     CONF_BAUDRATE,
@@ -9,8 +14,10 @@ from homeassistant.components.comfoconnect_pro.const import (
     CONF_UNIT_ID,
     TYPE_SERIAL,
     TYPE_TCP,
+    WRITE_SETTLE_TIME,
 )
-from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PORT, CONF_TYPE
+from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PORT, CONF_TYPE, Platform
+from homeassistant.core import HomeAssistant
 
 MOCK_TCP_INPUT = {
     CONF_HOST: "192.168.1.100",
@@ -77,3 +84,22 @@ def seed(
 def seed_gateway(unit: MockModbusUnit) -> None:
     """Seed a gateway reaching a ComfoAir Q with two CO₂ sensors."""
     seed(unit, discrete=DISCRETE, input_registers=INPUT, holding=HOLDING, coil=COIL)
+
+
+async def setup_integration(
+    hass: HomeAssistant, entry: MockConfigEntry, platforms: list[Platform]
+) -> None:
+    """Set up the integration with ``platforms``, for a test that seeds first."""
+    entry.add_to_hass(hass)
+    with patch("homeassistant.components.comfoconnect_pro.PLATFORMS", platforms):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+
+async def wait_for_write_refresh(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Run the refresh a write schedules once the unit had time to show it."""
+    freezer.tick(timedelta(seconds=WRITE_SETTLE_TIME))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()

@@ -14,10 +14,10 @@ docs/comfoconnect_pro.markdown               the page for home-assistant.io
 
 - A config flow with a menu for Modbus TCP (host, port, unit ID) or Modbus RTU (serial port, baud rate, parity, unit ID). It derives the stop bits from the parity, as the gateway does, and checks that the gateway reaches a ventilation unit before it creates the entry.
 - One coordinator that polls the status, the measurements and the settings every 30 seconds.
-- A fan with the four ventilation presets as speeds and the unit's auto mode as a preset.
-- Sensors for airflow, five temperatures, five humidities, the filter life and the five alarm slots. CO₂ zone sensors are added once a zone reports a level.
+- A fan with the unit's low, medium and high levels as speeds, and auto mode, away and boost as presets. Away and boost run on top of auto mode or a speed.
+- Sensors for airflow, four temperatures, four humidities, the filter life, the comfort temperature, the boost time remaining and the five alarm slots. The room temperature and humidity sensors are added once a room sensor reports, and the CO₂ zone sensors once a zone reports a level.
 - Binary sensors for the error, filter, standby and ComfoHood flags.
-- Switches for boost, away and ComfoCool. Selects for the temperature profile and its mode. Numbers for the external setpoint and the boost duration. A button that resets the alarms.
+- A ComfoCool switch, disabled by default. Selects for the temperature profile and its mode. Numbers for the external setpoint, available only in that mode, and the boost duration, which Home Assistant keeps and writes before each boost. A button that resets the alarms.
 - Diagnostics with the raw register dump. The host and serial port are redacted.
 
 It takes its Modbus unit from core's `modbus` integration with `async_get_unit`, so it shares the connection with any other integration that talks to the same gateway or serial port.
@@ -51,4 +51,4 @@ CI does the same against core's `dev` branch on every push and once a week.
 - Publish `comfoconnect-pro-modbus` 0.1.0 to PyPI. The manifest pins it.
 - Add the brand to [home-assistant/brands](https://github.com/home-assistant/brands). Core's `comfoconnect` integration is Zehnder too, so a `zehnder` brand that groups both fits. Until then hassfest fails the `brands` rule of the Bronze tier, which every new integration has to reach.
 - Open the documentation pull request on home-assistant.io with `docs/comfoconnect_pro.markdown`.
-- Test against a real gateway. The register map comes from the gateway's installation manual, document revision 140, and has only been tested against the mock. The fan's auto mode handling and the CO₂ zones in particular rest on readings of the manual that need checking.
+- Test the rest against a real gateway. Tested on a ComfoConnect PRO with firmware 1.0.5 and a ComfoAir Q: every read, and every write except ComfoCool. That unit has no room sensor, CO₂ sensors or ComfoCool, so the room sensors, the CO₂ zones and the ComfoCool switch rest on the manual and on the room registers reading 0 without a sensor.

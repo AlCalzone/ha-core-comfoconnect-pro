@@ -1,8 +1,10 @@
 """Tests for the Zehnder ComfoConnect PRO select platform."""
 
 from comfoconnect_pro_modbus.model import address
+from freezegun.api import FrozenDateTimeFactory
 from modbus_connection.mock import MockModbusUnit, WriteEvent
 import pytest
+from pytest_homeassistant.common import MockConfigEntry, snapshot_platform
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.select import (
@@ -14,7 +16,7 @@ from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from tests.common import MockConfigEntry, snapshot_platform
+from . import wait_for_write_refresh
 
 pytestmark = pytest.mark.parametrize("platforms", [[Platform.SELECT]])
 
@@ -48,6 +50,7 @@ async def test_selects(
 async def test_select_option(
     hass: HomeAssistant,
     mock_unit: MockModbusUnit,
+    freezer: FrozenDateTimeFactory,
     entity_id: str,
     option: str,
     register: int,
@@ -65,4 +68,5 @@ async def test_select_option(
     )
 
     assert writes == [WriteEvent("holding", address(register), [value], 0x06)]
+    await wait_for_write_refresh(hass, freezer)
     assert hass.states.get(entity_id).state == option

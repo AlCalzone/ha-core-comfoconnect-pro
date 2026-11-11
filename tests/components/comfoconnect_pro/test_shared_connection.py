@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from modbus_connection.mock import MockModbusConnection
 import pytest
+from pytest_homeassistant.common import MockConfigEntry
 
 from homeassistant.components.comfoconnect_pro.config_flow import (
     STEP_RECONFIGURE_SERIAL,
@@ -19,8 +20,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from . import MOCK_SERIAL_ENTRY_DATA, MOCK_SERIAL_INPUT, seed_gateway
-
-from tests.common import MockConfigEntry
 
 
 @pytest.fixture

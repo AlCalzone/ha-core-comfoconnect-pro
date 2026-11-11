@@ -5,6 +5,11 @@ from datetime import timedelta
 from freezegun.api import FrozenDateTimeFactory
 from modbus_connection.mock import MockModbusUnit
 import pytest
+from pytest_homeassistant.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+    snapshot_platform,
+)
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.comfoconnect_pro.const import SCAN_INTERVAL
@@ -12,9 +17,7 @@ from homeassistant.const import STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from . import INPUT, seed
-
-from tests.common import MockConfigEntry, async_fire_time_changed, snapshot_platform
+from . import INPUT, seed, setup_integration
 
 pytestmark = pytest.mark.parametrize("platforms", [[Platform.SENSOR]])
 
@@ -45,6 +48,31 @@ async def test_co2_zone_added_when_it_reports(
     await hass.async_block_till_done()
 
     assert hass.states.get("sensor.comfoair_co2_zone_2").state == "455"
+
+
+@pytest.mark.usefixtures("mock_get_unit")
+async def test_room_sensors_added_when_they_report(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    mock_config_entry: MockConfigEntry,
+    mock_unit: MockModbusUnit,
+    platforms: list[Platform],
+) -> None:
+    """Test a unit without a room sensor gets the room sensors once one reports."""
+    seed(mock_unit, input_registers={0x0008: 0, 0x000D: 0})
+    await setup_integration(hass, mock_config_entry, platforms)
+
+    assert hass.states.get("sensor.comfoair_room_temperature") is None
+    assert hass.states.get("sensor.comfoair_room_humidity") is None
+    assert hass.states.get("sensor.comfoair_extract_air_temperature").state == "21.8"
+
+    seed(mock_unit, input_registers={0x0008: 215, 0x000D: 48})
+    freezer.tick(timedelta(seconds=SCAN_INTERVAL))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert hass.states.get("sensor.comfoair_room_temperature").state == "21.5"
+    assert hass.states.get("sensor.comfoair_room_humidity").state == "48"
 
 
 @pytest.mark.parametrize(

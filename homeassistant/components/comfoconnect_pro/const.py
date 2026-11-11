@@ -12,6 +12,11 @@ DEFAULT_PARITY = "even"
 DEFAULT_PORT = 502
 DEFAULT_UNIT_ID = 1
 SCAN_INTERVAL = 30
+# How long the unit takes to show a write: under 0.5 s for a coil, about 2 s
+# for the preset that follows a boost or the away function, in seconds
+WRITE_SETTLE_TIME = 3
+# The boost length until the user picks one, in seconds
+DEFAULT_BOOST_DURATION = 1800
 
 # `BAUDRATES` lists what the gateway's Protocols and services page offers.
 BAUDRATES = (

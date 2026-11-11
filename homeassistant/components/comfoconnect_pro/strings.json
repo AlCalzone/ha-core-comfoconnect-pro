@@ -106,14 +106,16 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "Auto"
+              "auto": "Auto",
+              "away": "Away",
+              "boost": "Boost"
             }
           }
         }
       }
     },
     "number": {
-      "boost_time": {
+      "boost_duration": {
         "name": "Boost duration"
       },
       "external_setpoint": {
@@ -212,8 +214,14 @@
       "airflow": {
         "name": "Airflow"
       },
+      "boost_remaining": {
+        "name": "Boost time remaining"
+      },
       "co2_zone": {
         "name": "CO₂ zone {number}"
+      },
+      "comfort_temperature": {
+        "name": "Comfort temperature"
       },
       "exhaust_humidity": {
         "name": "Exhaust air humidity"
@@ -250,12 +258,6 @@
       }
     },
     "switch": {
-      "away": {
-        "name": "Away"
-      },
-      "boost": {
-        "name": "Boost"
-      },
       "comfocool": {
         "name": "ComfoCool"
       }

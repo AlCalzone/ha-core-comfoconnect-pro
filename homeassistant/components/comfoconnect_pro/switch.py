@@ -29,20 +29,11 @@ class ComfoConnectProSwitchDescription(
 
 SWITCH_DESCRIPTIONS: tuple[ComfoConnectProSwitchDescription, ...] = (
     ComfoConnectProSwitchDescription(
-        key="boost",
-        translation_key="boost",
-        value_fn=lambda controls: controls.boost,
-        write_fn=lambda controls, on: controls.async_write_boost(on),
-    ),
-    ComfoConnectProSwitchDescription(
-        key="away",
-        translation_key="away",
-        value_fn=lambda controls: controls.away_function,
-        write_fn=lambda controls, on: controls.async_write_away_function(on),
-    ),
-    ComfoConnectProSwitchDescription(
         key="comfocool",
         translation_key="comfocool",
+        # The coil reads on without a ComfoCool fitted, and the gateway does not
+        # tell whether one is
+        entity_registry_enabled_default=False,
         value_fn=lambda controls: controls.comfocool,
         write_fn=lambda controls, on: controls.async_write_comfocool(on),
     ),

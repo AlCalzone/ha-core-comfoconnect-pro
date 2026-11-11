@@ -31,7 +31,7 @@ It reads the airflow, the temperature and humidity of each air stream, the CO₂
 
 ## Use cases
 
-- Boosting the ventilation while you shower or cook. An automation turns on **Boost** when a bathroom humidity sensor rises.
+- Boosting the ventilation while you shower or cook. An automation picks the fan's **Boost** preset when a bathroom humidity sensor rises.
 - Lowering the ventilation while nobody is home. Turn on **Away** when the last person leaves.
 - Following CO₂ in each room. Each CO₂ zone wired to the unit becomes a sensor.
 - Knowing when to change the filters. **Filter days remaining** counts down, and the **Filter** sensor turns on when the filters are due.
@@ -98,17 +98,26 @@ All entities belong to one device, named after the config entry.
 
 ### Fan
 
-The fan sets the ventilation speed. Its four speeds are the unit's presets: away (25 %), low (50 %), medium (75 %) and high (100 %). The **Auto** preset hands the speed to the unit's own control. Choosing a speed turns auto mode off.
+The fan sets the ventilation speed. Its three speeds are the unit's levels: low (33 %), medium (66 %) and high (100 %). Its presets:
+
+- **Auto** hands the speed to the unit's own control.
+- **Away** turns on the unit's away function, which ventilates at the lowest level. The fan shows no speed meanwhile.
+- **Boost** runs the fans at high speed for the **Boost duration**. Zehnder's app calls it the party timer.
+
+Away and boost run on top of auto mode or the chosen speed, and the unit returns to it when they end. Choosing a speed ends away or a boost and turns auto mode off until you choose **Auto** again. A speed chosen in Zehnder's app instead overrides auto mode for 2 hours.
 
 The unit always ventilates, so the fan cannot be turned off.
 
 ### Sensors
 
 - **Airflow**: in m³/h.
-- **Room temperature**, **Extract air temperature**, **Exhaust air temperature**, **Outdoor air temperature**, **Supply air temperature**. Extract air comes from the rooms into the unit. Exhaust air leaves the house. Supply air goes into the rooms.
-- The humidity of the same five air streams.
+- **Extract air temperature**, **Exhaust air temperature**, **Outdoor air temperature**, **Supply air temperature**. Extract air comes from the rooms into the unit. Exhaust air leaves the house. Supply air goes into the rooms.
+- The humidity of the same four air streams.
+- **Room temperature** and **Room humidity**: added once a room sensor reports.
 - **CO₂ zone 1** to **CO₂ zone 8**: added once a zone reports a level.
 - **Filter days remaining**.
+- **Comfort temperature**: the comfort temperature the unit aims for, from the temperature profile and its mode.
+- **Boost time remaining**: the time left on a running boost, or 0.
 - **Active error 1** to **Active error 5** (diagnostic): the alarms the unit reports, by name. Only the first is enabled by default.
 
 ### Binary sensors
@@ -120,16 +129,14 @@ The unit always ventilates, so the fan cannot be turned off.
 
 ### Switches
 
-- **Boost**: runs the fans at boost speed for the **Boost duration**.
-- **Away**: the unit's away function.
-- **ComfoCool**: allows the ComfoCool unit to cool.
+- **ComfoCool**: allows the ComfoCool unit to cool. It is disabled by default, because the gateway does not tell whether a ComfoCool is fitted. Enable it if you have one.
 
 ### Configuration
 
 - **Temperature profile** (select): normal, cold or warm. It applies in the adaptive and fixed profile modes.
 - **Temperature profile mode** (select): adaptive, fixed, or external setpoint.
-- **External setpoint** (number): the comfort temperature in the external setpoint mode.
-- **Boost duration** (number): in seconds, up to 65534, or exactly 86400 for 24 hours.
+- **External setpoint** (number): the comfort temperature in the external setpoint mode. It is unavailable in the other modes.
+- **Boost duration** (number): how long a boost started from Home Assistant lasts, in seconds, up to 65534, or exactly 86400 for 24 hours. Home Assistant keeps it and sends it with each boost, because the gateway does not report it. A boost started from Zehnder's app uses the app's duration.
 - **Reset errors** (button): clears the unit's alarms.
 
 ## Examples
@@ -144,9 +151,11 @@ automation:
         entity_id: sensor.bathroom_humidity
         above: 75
     actions:
-      - action: switch.turn_on
+      - action: fan.set_preset_mode
         target:
-          entity_id: switch.comfoair_boost
+          entity_id: fan.comfoair
+        data:
+          preset_mode: boost
 ```
 
 ### Away mode while nobody is home
@@ -159,14 +168,16 @@ automation:
         entity_id: zone.home
         to: "0"
     actions:
-      - action: switch.turn_on
+      - action: fan.set_preset_mode
         target:
-          entity_id: switch.comfoair_away
+          entity_id: fan.comfoair
+        data:
+          preset_mode: away
 ```
 
 ## Data updates
 
-The integration polls the gateway every 30 seconds. One poll makes five Modbus reads. A write is followed by an early poll, so the state updates right away.
+The integration polls the gateway every 30 seconds. One poll makes five Modbus reads. Home Assistant shows a change at once, and polls 3 seconds after it, once the unit has applied it.
 
 If one block of registers fails to read, only the entities from that block become unavailable. If the gateway loses its ventilation unit, all entities become unavailable until it finds the unit again.
 
@@ -177,6 +188,7 @@ If one block of registers fails to read, only the entities from that block becom
 - The ventilation unit cannot be turned off or put into standby over Modbus.
 - The manual does not say what a CO₂ zone without a sensor reports. The integration takes 0 to mean no sensor.
 - The manual gives no range for the external setpoint. The integration allows 0 to 40 °C.
+- The gateway does not tell whether a ComfoCool is fitted. The **ComfoCool** switch reads on without one.
 
 ## Troubleshooting
 
@@ -187,6 +199,10 @@ The gateway answered, but it reports a connection state other than OK:
 - **30**: the unit on ComfoNet is not a ComfoAir Q or Flex.
 - **40**: the unit's firmware is not compatible with the gateway. Update the unit's firmware.
 - **50**: the gateway finds no unit. Check the ComfoNet cable.
+
+### The gateway has no path to the ventilation unit
+
+The gateway answers, but refuses every read, while Zehnder's app still reaches the unit. Saving the gateway's settings restarts the gateway, but did not help in testing. Power cycle the ventilation unit, then reload the integration.
 
 ### Failed to connect
 

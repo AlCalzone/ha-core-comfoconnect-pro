@@ -5,14 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from modbus_connection.mock import MockModbusConnection, MockModbusUnit
 import pytest
+from pytest_homeassistant.common import MockConfigEntry
 
 from homeassistant.components.comfoconnect_pro.const import DEFAULT_NAME, DOMAIN
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from . import MOCK_ENTRY_DATA, seed_gateway
-
-from tests.common import MockConfigEntry
 
 
 @pytest.fixture
@@ -21,7 +20,7 @@ def mock_setup_entry() -> Generator[AsyncMock]:
     with patch(
         "homeassistant.components.comfoconnect_pro.async_setup_entry",
         new_callable=AsyncMock,
-        return_value=True,
+        return_value=None,
     ) as mock_setup_entry:
         yield mock_setup_entry
 

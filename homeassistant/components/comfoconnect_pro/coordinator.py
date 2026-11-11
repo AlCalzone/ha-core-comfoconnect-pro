@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, MANUFACTURER, MODEL, SCAN_INTERVAL
+from .const import DEFAULT_BOOST_DURATION, DOMAIN, MANUFACTURER, MODEL, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,8 +97,13 @@ class ComfoConnectProRuntimeData:
     """Class to hold runtime data."""
 
     coordinator: ComfoConnectProDataUpdateCoordinator
-    # `wired_co2_zones` holds the zones the sensor platform added entities for.
-    wired_co2_zones: set[int] = field(default_factory=set)
+    # `added_sensors` holds the keys of the optional sensors the sensor
+    # platform added entities for, once each reported a value.
+    added_sensors: set[str] = field(default_factory=set)
+    # The gateway reads back the time left on a boost, not its length, so the
+    # Boost duration number keeps the length here, and the fan's boost preset
+    # writes it before each boost.
+    boost_duration: int = DEFAULT_BOOST_DURATION
 
     @property
     def device(self) -> ComfoConnectPro:

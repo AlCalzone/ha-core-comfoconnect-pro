@@ -22,14 +22,16 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "mdi:fan-auto"
+              "auto": "mdi:fan-auto",
+              "away": "mdi:home-export-outline",
+              "boost": "mdi:fan-plus"
             }
           }
         }
       }
     },
     "number": {
-      "boost_time": {
+      "boost_duration": {
         "default": "mdi:timer-outline"
       }
     },
@@ -45,17 +47,14 @@
       "active_error": {
         "default": "mdi:alert-circle-outline"
       },
+      "boost_remaining": {
+        "default": "mdi:timer-sand"
+      },
       "filter_days_remaining": {
         "default": "mdi:air-filter"
       }
     },
     "switch": {
-      "away": {
-        "default": "mdi:home-export-outline"
-      },
-      "boost": {
-        "default": "mdi:fan-plus"
-      },
       "comfocool": {
         "default": "mdi:snowflake"
       }

@@ -13,6 +13,7 @@ from modbus_connection import (
 )
 from modbus_connection.mock import MockModbusConnection, MockModbusUnit
 import pytest
+from pytest_homeassistant.common import MockConfigEntry, get_schema_suggested_value
 
 from homeassistant import config_entries
 from homeassistant.components.comfoconnect_pro.config_flow import (
@@ -43,8 +44,6 @@ from . import (
     seed,
     seed_gateway,
 )
-
-from tests.common import MockConfigEntry, get_schema_suggested_value
 
 
 def _patch_temporary_unit(connection: MockModbusConnection) -> _patch[AsyncMock]:
